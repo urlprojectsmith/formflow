@@ -22,7 +22,41 @@ interface AuthContextValue {
 
 const STORAGE_KEY = 'formflow_auth_user';
 const STORAGE_TOKEN_KEY = 'formflow_auth_token';
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE = (() => {
+  const raw = String(import.meta.env.VITE_API_BASE_URL || '/api').trim();
+  if (!raw) {
+    return '/api';
+  }
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      const path = (parsed.pathname || '/').replace(/\/+$/, '');
+      if (!path || path === '') {
+        return `${parsed.origin}/api`;
+      }
+      if (path === '/api') {
+        return `${parsed.origin}/api`;
+      }
+      return `${parsed.origin}${path}/api`;
+    } catch {
+      return '/api';
+    }
+  }
+
+  if (raw.startsWith('/')) {
+    const path = raw.replace(/\/+$/, '');
+    if (!path || path === '/') {
+      return '/api';
+    }
+    if (path === '/api') {
+      return '/api';
+    }
+    return `${path}/api`;
+  }
+
+  return `${raw.replace(/\/+$/, '')}/api`;
+})();
 
 interface ApiError {
   ok: false;

@@ -23,7 +23,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:4450
+        VITE_API_BASE_URL: /api
     container_name: formflow-web
     restart: unless-stopped
     depends_on:
