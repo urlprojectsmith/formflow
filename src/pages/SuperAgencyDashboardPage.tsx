@@ -13,36 +13,9 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { TenantAccount, TenantStatus, UserProfile } from '../types';
+import { getApiBaseCandidates } from '../config/apiBase';
 
-const API_BASE = (() => {
-  const raw = String((import.meta as Record<string, unknown>).env?.VITE_API_BASE_URL || '/api').trim();
-  if (!raw) {
-    return '/api';
-  }
-  if (/^https?:\/\//i.test(raw)) {
-    try {
-      const parsed = new URL(raw);
-      const path = (parsed.pathname || '').replace(/\/+$/, '');
-      if (!path || path === '' || path === '/') {
-        return `${parsed.origin}/api`;
-      }
-      if (path === '/api') {
-        return `${parsed.origin}/api`;
-      }
-      return `${parsed.origin}${path}/api`;
-    } catch {
-      return '/api';
-    }
-  }
-  const path = raw.replace(/\/+$/, '');
-  if (!path || path === '/') {
-    return '/api';
-  }
-  if (path === '/api') {
-    return '/api';
-  }
-  return path.startsWith('/') ? `${path}/api` : `${path}/api`;
-})();
+const API_BASES = getApiBaseCandidates();
 
 const STORAGE_TOKEN_KEY = 'formflow_auth_token';
 
@@ -111,22 +84,52 @@ const apiRequest = async <T,>(
   init: RequestInit = {}
 ): Promise<T | null> => {
   const token = normalizeToken();
-  const endpoint = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-  const response = await fetch(endpoint, {
-    ...(init.body ? { body: init.body } : {}),
-    method: init.method || 'GET',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...init,
-  });
-  const raw = (await response.json().catch(() => null)) as ApiOk<T> | ApiFail | null;
-  if (!response.ok || !raw || raw.ok !== true) {
-    return null;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...init.headers,
+  };
+
+  const endpointSuffix = normalizedPath;
+
+  for (const base of API_BASES) {
+    const endpoint = `${base}${endpointSuffix}`;
+    try {
+      const response = await fetch(endpoint, {
+        ...(init.body ? { body: init.body } : {}),
+        method: init.method || 'GET',
+        credentials: 'include',
+        headers,
+        ...init,
+      });
+      const raw = (await response.json().catch(() => null)) as ApiOk<T> | ApiFail | null;
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          lastError = new Error(`API endpoint not available at ${endpoint}`);
+          continue;
+        }
+        return null;
+      }
+
+      if (!raw || raw.ok !== true) {
+        return null;
+      }
+
+      return raw.data;
+    } catch (error) {
+      if (error instanceof TypeError) {
+        continue;
+      }
+      if (error instanceof Error) {
+        return null;
+      }
+      return null;
+    }
   }
-  return raw.data;
+
+  return null;
 };
 
 const mergeUsers = (nextUsers: UserProfile[]) => {

@@ -1,3 +1,4 @@
+import { getApiBaseCandidates } from '../config/apiBase';
 import {
   ActionExecutionStatus,
   DashboardMetrics,
@@ -18,37 +19,7 @@ import { createDefaultField } from '../utils/formBuilderUtils';
 
 const STORAGE_TOKEN_KEY = 'formflow_auth_token';
 
-const API_BASE = (() => {
-  const raw = String((import.meta as Record<string, unknown>).env?.VITE_API_BASE_URL || '/api').trim();
-  if (!raw) {
-    return '/api';
-  }
-
-  if (/^https?:\/\//i.test(raw)) {
-    try {
-      const parsed = new URL(raw);
-      const path = (parsed.pathname || '').replace(/\/+$/, '');
-      if (!path || path === '/') {
-        return `${parsed.origin}/api`;
-      }
-      if (path === '/api') {
-        return `${parsed.origin}/api`;
-      }
-      return `${parsed.origin}${path}/api`;
-    } catch {
-      return '/api';
-    }
-  }
-
-  const path = raw.replace(/\/+$/, '');
-  if (!path || path === '/') {
-    return '/api';
-  }
-  if (path === '/api') {
-    return '/api';
-  }
-  return path.startsWith('/') ? `${path}/api` : `${path}/api`;
-})();
+const API_BASES = getApiBaseCandidates();
 
 const STORAGE_KEY_SUBMISSION_ACTIONS = 'formflow_submission_actions_v1';
 
@@ -77,8 +48,7 @@ class FormFlowDataStore {
   private actionExecutionStatuses = new Map<string, ActionExecutionStatus[]>();
 
   private normalizePath(path: string) {
-    const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${API_BASE}${normalized}`;
+    return path.startsWith('/') ? path : `/${path}`;
   }
 
   private normalizeQuery(params: Record<string, QueryValue> = {}) {
@@ -95,7 +65,7 @@ class FormFlowDataStore {
     const { query = {}, ...fetchOptions } = options;
     const normalizedPath = this.normalizePath(path);
     const queryString = this.normalizeQuery(query);
-    const endpoint = `${normalizedPath}${queryString ? `?${queryString}` : ''}`;
+    const queryPart = queryString ? `?${queryString}` : '';
     const headers = new Headers(fetchOptions.headers || {});
     if (!headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
@@ -104,17 +74,47 @@ class FormFlowDataStore {
       headers.set('Authorization', `Bearer ${token}`);
     }
 
-    const response = await fetch(endpoint, {
-      ...fetchOptions,
-      headers,
-    });
-    const raw = (await response.json().catch(() => null)) as ApiResponse<T>;
-    if (!response.ok || !raw || raw.ok !== true) {
-      const message = (raw && raw.ok === false ? raw.error : null) || `Request failed (${response.status})`;
-      throw new Error(message);
+    let lastError: Error | null = null;
+    const endpointSuffix = `${normalizedPath}${queryPart}`;
+
+    for (const base of API_BASES) {
+      const endpoint = `${base}${endpointSuffix}`;
+      try {
+        const response = await fetch(endpoint, {
+          ...fetchOptions,
+          headers,
+        });
+        const raw = (await response.json().catch(() => null)) as ApiResponse<T>;
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            lastError = new Error(`API endpoint not available at ${endpoint}`);
+            continue;
+          }
+          const message = (raw && raw.ok === false ? raw.error : `Request failed (${response.status}) at ${endpoint}`);
+          throw new Error(message);
+        }
+
+        if (!raw || raw.ok !== true) {
+          const message = (raw && raw.ok === false ? raw.error : `Request failed (${response.status}) at ${endpoint}`);
+          throw new Error(message);
+        }
+
+        return raw.data;
+      } catch (error) {
+        if (error instanceof TypeError) {
+          lastError = error;
+          continue;
+        }
+        if (error instanceof Error && error.message.startsWith('API endpoint not available at')) {
+          lastError = error;
+          continue;
+        }
+        throw error;
+      }
     }
 
-    return raw.data;
+    throw lastError || new Error('All API endpoints are unavailable');
   }
 
   private getPersistedSubmissionActions(): Map<string, ActionExecutionStatus[]> {
@@ -402,3 +402,6 @@ class FormFlowDataStore {
 }
 
 export const apiService = new FormFlowDataStore();
+
+
+
