@@ -127,8 +127,7 @@ export const FormBuilderPage: React.FC = () => {
           />
         ) : activeSection === 'logic' ? (
           <FormLogicEditor
-            fields={form.fields}
-            rules={form.logicRules || []}
+            definition={form}
             onChangeRules={updateLogicRules}
           />
         ) : activeSection === 'actions' ? (

@@ -329,20 +329,20 @@ export const FormCanvas: React.FC<FormCanvasProps> = ({
   };
 
   return (
-    <main
-      className="flex-1 bg-slate-100/70 p-4 md:p-6 overflow-y-auto flex flex-col items-center select-none"
+      <main
+      className="flex-1 theme-surface-secondary p-4 md:p-6 overflow-y-auto flex flex-col items-center select-none"
       onClick={() => onSelectField(null)}
     >
       <div
         className={`w-full ${viewportWidthClass} transition-all duration-200 ease-in-out my-auto py-2`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-5 md:p-8 space-y-4">
+        <div className="theme-surface-card border-theme rounded-xl shadow-sm p-5 md:p-8 space-y-4">
           {/* Header Preview */}
-          <div className="pb-3 border-b border-slate-100">
-            <h2 className="text-xl font-bold text-slate-900">{form.name || 'Untitled Form'}</h2>
+          <div className="pb-3 border-b border-theme">
+            <h2 className="text-xl font-bold theme-text-primary">{form.name || 'Untitled Form'}</h2>
             {form.description && (
-              <p className="text-xs text-slate-500 mt-1">{form.description}</p>
+              <p className="text-xs theme-text-muted mt-1">{form.description}</p>
             )}
           </div>
 
@@ -351,16 +351,16 @@ export const FormCanvas: React.FC<FormCanvasProps> = ({
             <div
               onDragOver={(e) => handleDragOverSlot(e, 0)}
               onDrop={(e) => handleDropSlot(e, 0)}
-              className="py-16 px-6 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 text-center space-y-3 cursor-pointer hover:border-blue-400 hover:bg-blue-50/20 transition-all"
+              className="py-16 px-6 border-2 border-dashed border-theme rounded-xl theme-surface-hover text-center space-y-3 cursor-pointer hover:border-[var(--primary)] hover:bg-[var(--surface-hover)] transition-all"
             >
-              <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-full bg-theme-badge-success text-theme-primary flex items-center justify-center mx-auto">
                 <Plus className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold theme-text-primary">
                   Drag fields here to build your form
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs theme-text-muted mt-1">
                   Drag components from the left field library or click any item to append.
                 </p>
               </div>

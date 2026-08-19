@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   FileText,
@@ -10,7 +10,9 @@ import {
   Check,
   Plus,
 } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
 import { apiService } from '../services/apiService';
+import { TenantAccount } from '../types';
 
 const TEMPLATES = [
   {
@@ -47,14 +49,67 @@ const TEMPLATES = [
   },
 ];
 
+const normalizeRole = (value: unknown): string =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
 export const FormNewPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isSuperAdmin =
+    normalizeRole(user?.role) === 'super admin' ||
+    String(user?.email || '').trim().toLowerCase() === 'superadmin@formflow.io';
 
   const [formName, setFormName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('contact_template');
   const [domain, setDomain] = useState<string>('forms.company.com');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [tenants, setTenants] = useState<TenantAccount[]>([]);
+  const [tenantId, setTenantId] = useState<string>('');
+  const [isTenantLoading, setIsTenantLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      setTenants([]);
+      setTenantId('');
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadTenants = async () => {
+      setIsTenantLoading(true);
+      try {
+        const data = await apiService.getTenants();
+        if (!cancelled) {
+          setTenants(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setTenants([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsTenantLoading(false);
+        }
+      }
+    };
+
+    void loadTenants();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (isSuperAdmin && tenants.length === 1 && !tenantId) {
+      setTenantId(tenants[0].id);
+    }
+  }, [isSuperAdmin, tenants, tenantId]);
 
   const slug = formName
     .toLowerCase()
@@ -65,6 +120,10 @@ export const FormNewPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) return;
+    if (isSuperAdmin && !tenantId) {
+      alert('Please select an agency account.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -72,9 +131,10 @@ export const FormNewPage: React.FC = () => {
         name: formName.trim(),
         slug: slug || 'new-form',
         description: description.trim() || 'New form created in FormFlow',
-        status: 'published',
+        status: 'draft',
         fieldsCount: TEMPLATES.find((t) => t.id === selectedTemplate)?.fieldsCount || 4,
         domain: domain,
+        ...(isSuperAdmin && tenantId ? { tenantId } : {}),
       });
 
       navigate(`/forms/${created.id}/builder`);
@@ -174,6 +234,31 @@ export const FormNewPage: React.FC = () => {
                 </select>
               </div>
             </div>
+
+            {isSuperAdmin && (
+              <div className="space-y-1.5">
+                <label htmlFor="tenantId" className="block text-xs font-bold text-slate-700">
+                  Agency Account
+                </label>
+                <select
+                  id="tenantId"
+                  required
+                  value={tenantId}
+                  onChange={(event) => setTenantId(event.target.value)}
+                  className="w-full px-3 py-2 text-xs font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                >
+                  <option value="">
+                    {isTenantLoading ? 'Loading accounts...' : 'Select an agency account'}
+                  </option>
+                  {tenants.length === 0 && !isTenantLoading && <option disabled>No active accounts available</option>}
+                  {tenants.map((tenant) => (
+                    <option key={tenant.id} value={tenant.id}>
+                      {tenant.name} ({tenant.slug})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Template Selection */}

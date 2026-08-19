@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 
 interface FormLogicEditorProps {
-  definition: FormDefinition;
+  definition?: FormDefinition | null;
   onChangeRules: (rules: FormLogicRule[]) => void;
 }
 
@@ -66,8 +66,75 @@ export const FormLogicEditor: React.FC<FormLogicEditorProps> = ({
   definition,
   onChangeRules,
 }) => {
-  const rules = definition.logicRules || [];
-  const fields = definition.fields || [];
+  const safeFields = Array.isArray(definition?.fields) ? definition.fields : [];
+  const safeRules = Array.isArray(definition?.logicRules)
+    ? definition.logicRules
+    : [];
+
+  const normalizeRuleConditions = (rule: FormLogicRule, ruleIndex: number) => {
+    const conditions = Array.isArray(rule.conditions) ? rule.conditions : [];
+    if (conditions.length > 0) {
+      return conditions.map((condition, conditionIndex) => ({
+        ...condition,
+        id: condition.id || `cond_${rule.id || ruleIndex}_fallback_${conditionIndex + 1}`,
+        fieldId: condition.fieldId || '',
+        operator: condition.operator || 'equals',
+        value: condition.value || '',
+      }));
+    }
+
+    return [
+      {
+        id: `cond_${rule.id || ruleIndex}_fallback_1`,
+        fieldId: '',
+        operator: 'equals',
+        value: '',
+      },
+    ];
+  };
+
+  const normalizeRuleActions = (rule: FormLogicRule, ruleIndex: number) => {
+    const actions = Array.isArray(rule.actions) ? rule.actions : [];
+    if (actions.length > 0) {
+      return actions.map((action, actionIndex) => ({
+        ...action,
+        id: action.id || `act_${rule.id || ruleIndex}_fallback_${actionIndex + 1}`,
+        targetFieldId: action.targetFieldId || '',
+        action: action.action || 'show',
+      }));
+    }
+
+    return [
+      {
+        id: `act_${rule.id || ruleIndex}_fallback_1`,
+        targetFieldId: '',
+        action: 'show',
+      },
+    ];
+  };
+
+  const normalizedRules = safeRules.map((rule, idx) => ({
+    ...rule,
+    id: rule.id || `rule_${idx + 1}`,
+    name: rule.name || `Logic Rule #${idx + 1}`,
+    enabled: rule.enabled !== false,
+    matchType: rule.matchType === 'ANY' ? 'ANY' : 'ALL',
+    conditions: normalizeRuleConditions(rule, idx + 1),
+    actions: normalizeRuleActions(rule, idx + 1),
+  }));
+
+  if (!definition) {
+    return (
+      <div className="max-w-5xl mx-auto p-6 space-y-8 font-sans">
+        <div className="p-6 bg-amber-50 border border-amber-200 rounded-2xl text-sm text-amber-900">
+          Logic editor could not load the form definition. Return to Forms and reopen the builder.
+        </div>
+      </div>
+    );
+  }
+
+  const rules = normalizedRules;
+  const fields = safeFields;
 
   // Filter out static layout elements for condition targets
   const inputFields = fields.filter(

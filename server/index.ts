@@ -179,6 +179,11 @@ function randomId(prefix: string) {
   return `${prefix}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
 }
 
+function normalizeFormStatus(status: unknown) {
+  const value = String(status || '').trim().toLowerCase();
+  return ALLOWED_FORM_STATUSES.includes(value as FormStatusType) ? (value as FormStatusType) : 'draft';
+}
+
 function generateAuthToken(user: AuthUser) {
   const raw = JSON.stringify({
     id: user.id,
@@ -656,7 +661,7 @@ class DataStore {
       name: data.name || 'Untitled Form',
       slug: data.slug || `form-${Date.now()}`,
       description: data.description || '',
-      status: (data.status as FormStatusType) || 'draft',
+      status: normalizeFormStatus(data.status),
       publishedVersion: data.publishedVersion,
       fieldsCount: data.fieldsCount || 0,
       submissionsCount: 0,
@@ -669,6 +674,7 @@ class DataStore {
       theme: data.theme,
     };
     this.forms.unshift(form);
+    this.ensureDefinitions(form.id);
     this.persist();
     return form;
   }
@@ -710,7 +716,51 @@ class DataStore {
     const draft = versions.find((v) => v.status === 'draft');
     const fallback = versions[0];
     const active = draft || fallback;
-    if (!active) return null;
+    if (!active) {
+      const fallbackDefinition: FormDefinition = {
+        id: form.id,
+        name: form.name,
+        description: form.description,
+        status: form.status,
+        version: 1,
+        fields: this.buildDefaultFields(form.name, form.id),
+        settings: {
+          submitButtonText: 'Submit Response',
+          successMessage: 'Thank you! Your submission has been recorded.',
+        },
+        theme: {
+          primaryColor: '#2563eb',
+          backgroundColor: '#ffffff',
+          fontFamily: 'Inter',
+        },
+        createdAt: form.createdAt,
+        updatedAt: form.updatedAt,
+      };
+      const version: FormVersion = {
+        id: randomId(`ver_${formId}`),
+        formId,
+        versionNumber: 1,
+        status: form.status,
+        definition: fallbackDefinition,
+        createdAt: nowISO(),
+        createdBy: 'System',
+        publishedAt: form.status === 'published' ? form.updatedAt : undefined,
+        notes: 'Compatibility fallback definition',
+      };
+      this.formDefinitions.set(formId, fallbackDefinition);
+      this.formVersions.set(formId, [version]);
+      this.persist();
+      return fallbackDefinition;
+    }
+
+    if (!active.definition && this.formDefinitions.has(formId)) {
+      active.definition = this.formDefinitions.get(formId)!;
+    }
+
+    if (!active.definition) {
+      return this.formDefinitions.get(formId) || null;
+    }
+
     return active.definition || this.formDefinitions.get(formId);
   }
 
@@ -1520,12 +1570,33 @@ app.get(`${API_PREFIX}/forms`, requireAuth, (req, res) => {
 
 app.post(`${API_PREFIX}/forms`, requireAuth, requireRole(['Super Admin', 'Admin', 'Developer']), (req, res) => {
   const body = req.body || {};
-  const tenantId = req.authUser && req.authUser.role !== 'Super Admin' ? req.authUser.tenantId : undefined;
+  let requestedTenantId =
+    req.authUser && req.authUser.role === 'Super Admin'
+      ? String(body.tenantId || '').trim()
+      : undefined;
+
+  if (req.authUser && req.authUser.role === 'Super Admin') {
+    if (!requestedTenantId) {
+      const tenants = store.getTenants();
+      if (tenants.length === 1) {
+        requestedTenantId = tenants[0].id;
+      } else {
+      fail(res, 'tenantId is required when creating a form as Super Admin', 400);
+        return;
+      }
+    }
+    if (!store.getTenantById(requestedTenantId)) {
+      fail(res, 'Invalid tenantId for Super Admin', 400);
+      return;
+    }
+  }
+
+  const tenantId = req.authUser && req.authUser.role === 'Super Admin' ? requestedTenantId : req.authUser?.tenantId;
   const created = store.createForm({
     name: body.name,
     slug: body.slug,
     description: body.description || '',
-    status: body.status as FormStatusType,
+    status: normalizeFormStatus(body.status),
     fieldsCount: body.fieldsCount || 0,
     submissionsCount: 0,
     viewsCount: 0,

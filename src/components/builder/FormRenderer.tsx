@@ -71,9 +71,35 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
   onSubmitSuccess,
   externalError,
 }) => {
+  const safeDefinition = {
+    ...definition,
+    fields: Array.isArray(definition.fields) ? definition.fields : [],
+    logicRules: Array.isArray(definition.logicRules) ? definition.logicRules : [],
+    settings: {
+      submitButtonText: definition.settings?.submitButtonText || 'Submit Response',
+      successMessage: definition.settings?.successMessage || 'Thank you! Your submission has been recorded.',
+      redirectUrl: definition.settings?.redirectUrl,
+      storeSubmissions: definition.settings?.storeSubmissions,
+    },
+    theme: {
+      primaryColor: definition.theme?.primaryColor || '#2563eb',
+      backgroundColor: definition.theme?.backgroundColor || '#ffffff',
+      fontFamily: definition.theme?.fontFamily || 'Inter',
+      borderRadius: definition.theme?.borderRadius || 'md',
+      fontSize: definition.theme?.fontSize || 'sm',
+      inputStyle: definition.theme?.inputStyle || 'default',
+      buttonStyle: definition.theme?.buttonStyle || 'solid',
+    },
+    actionsPipeline: Array.isArray(definition.actionsPipeline) ? definition.actionsPipeline : [],
+    renderMode: definition.renderMode || 'visual',
+    customHtml: definition.customHtml || '',
+    customCss: definition.customCss || '',
+    customJs: definition.customJs || '',
+  };
+
   const [formData, setFormData] = useState<Record<string, any>>(() => {
     const initial: Record<string, any> = {};
-    definition.fields.forEach((f) => {
+    safeDefinition.fields.forEach((f) => {
       if (f.defaultValue !== undefined && f.defaultValue !== '') {
         initial[f.name] = f.defaultValue;
       } else if (['select', 'radio'].includes(f.type)) {
@@ -96,7 +122,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
 
   // Custom Iframe Event Bridge for custom render mode
   useEffect(() => {
-    if (definition.renderMode !== 'custom') return;
+    if (safeDefinition.renderMode !== 'custom') return;
 
     const handleCustomIframeMessage = async (event: MessageEvent) => {
       if (!event.data || typeof event.data !== 'object') return;
@@ -122,17 +148,17 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
 
     window.addEventListener('message', handleCustomIframeMessage);
     return () => window.removeEventListener('message', handleCustomIframeMessage);
-  }, [definition.renderMode, readOnly, onSubmitSubmit, onSubmitSuccess]);
+  }, [safeDefinition.renderMode, readOnly, onSubmitSubmit, onSubmitSuccess]);
 
   // Handle Redirect Countdown when form is submitted
   useEffect(() => {
-    if (submitted && definition.settings?.redirectUrl) {
+    if (submitted && safeDefinition.settings.redirectUrl) {
       setRedirectCountdown(3);
       const timer = setInterval(() => {
         setRedirectCountdown((prev) => {
           if (prev === null || prev <= 1) {
             clearInterval(timer);
-            window.location.href = definition.settings!.redirectUrl!;
+            window.location.href = safeDefinition.settings.redirectUrl!;
             return 0;
           }
           return prev - 1;
@@ -141,14 +167,14 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
 
       return () => clearInterval(timer);
     }
-  }, [submitted, definition.settings?.redirectUrl]);
+  }, [submitted, safeDefinition.settings.redirectUrl]);
 
   // If renderMode is 'custom', render custom HTML/CSS/JS inside a sandboxed iframe
-  if (definition.renderMode === 'custom') {
+  if (safeDefinition.renderMode === 'custom') {
     const doc = buildSandboxedIframeDoc(
-      definition.customHtml || '',
-      definition.customCss || '',
-      definition.customJs || ''
+      safeDefinition.customHtml || '',
+      safeDefinition.customCss || '',
+      safeDefinition.customJs || ''
     );
 
     return (
@@ -164,18 +190,18 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
             sandbox="allow-scripts"
             srcDoc={doc}
             className="w-full h-[550px] border-0"
-            title={`${definition.name} Custom Rendered Form`}
+            title={`${safeDefinition.name} Custom Rendered Form`}
           />
         </div>
       </div>
     );
   }
 
-  const primaryColor = definition.theme?.primaryColor || '#2563eb';
-  const radiusClass = getRadiusClass(definition.theme?.borderRadius);
-  const fontClass = getFontSizeClass(definition.theme?.fontSize);
-  const inputStyle = definition.theme?.inputStyle || 'default';
-  const buttonStyle = definition.theme?.buttonStyle || 'solid';
+  const primaryColor = safeDefinition.theme?.primaryColor || '#2563eb';
+  const radiusClass = getRadiusClass(safeDefinition.theme?.borderRadius);
+  const fontClass = getFontSizeClass(safeDefinition.theme?.fontSize);
+  const inputStyle = safeDefinition.theme?.inputStyle || 'default';
+  const buttonStyle = safeDefinition.theme?.buttonStyle || 'solid';
 
   // Input styling variants
   const getInputClass = () => {
@@ -218,15 +244,15 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
 
   // Evaluate logic rules against current form data
   const { fieldStates } = evaluateFormLogic(
-    definition.fields,
-    definition.logicRules || [],
+    safeDefinition.fields,
+    safeDefinition.logicRules || [],
     formData
   );
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    definition.fields.forEach((field) => {
+    safeDefinition.fields.forEach((field) => {
       if (['heading', 'paragraph', 'divider', 'image', 'html', 'submit'].includes(field.type)) {
         return;
       }

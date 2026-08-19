@@ -3,11 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <script>
+      (function() {
+        try {
+          var savedTheme = localStorage.getItem('formflow-theme');
+          var allowed = new Set(['light', 'dark', 'colour']);
+          var initialTheme = allowed.has(savedTheme) ? savedTheme : 'light';
+          document.documentElement.setAttribute('data-theme', initialTheme);
+          document.documentElement.style.colorScheme = initialTheme === 'dark' ? 'dark' : 'light';
+        } catch (error) {
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
+    <title>FormFlow</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

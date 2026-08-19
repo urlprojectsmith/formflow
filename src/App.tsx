@@ -62,14 +62,14 @@ function HomeRedirect() {
 
 function AccessDeniedPage() {
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm text-center space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-700">Access Denied</p>
+    <div className="theme-app-shell min-h-screen flex items-center justify-center p-6">
+      <div className="theme-card-title theme-surface-card border border-theme px-6 py-6 rounded-2xl shadow-sm text-center space-y-3">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-theme-secondary">Access Denied</p>
         <h2 className="text-2xl font-black">You do not have permission to open this dashboard.</h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm theme-text-secondary">
           This area is restricted to your assigned role. Please log in with a permitted role or return to your dashboard.
         </p>
-        <a href="/dashboard" className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold">
+        <a href="/dashboard" className="inline-block mt-2 px-4 py-2 theme-button-primary rounded-lg text-sm font-bold">
           Back to Dashboard
         </a>
       </div>

@@ -37,7 +37,7 @@ export const AppLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col">
+    <div className="theme-app-shell font-sans antialiased flex flex-col">
       <Sidebar
         user={user}
         mobileOpen={mobileOpen}
@@ -45,7 +45,7 @@ export const AppLayout: React.FC = () => {
         onLogout={logout}
       />
 
-      <div className="lg:pl-64 flex-1 flex flex-col min-w-0">
+      <div className="theme-layout-main lg:pl-64 flex-1 flex flex-col min-w-0">
         <TopBar user={user} onOpenMobileMenu={() => setMobileOpen(true)} onLogout={logout} />
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">

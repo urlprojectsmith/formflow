@@ -38,9 +38,19 @@ export function useFormBuilder(formId: string) {
       try {
         const data = await apiService.getFormDefinition(formId);
         if (isMounted) {
-          setForm(data);
-          if (data.fields.length > 0) {
-            setSelectedFieldId(data.fields[0].id);
+          const safeFields = Array.isArray(data.fields) ? data.fields : [];
+          const safeRules = Array.isArray(data.logicRules) ? data.logicRules : [];
+          const safeActions = Array.isArray(data.actionsPipeline) ? data.actionsPipeline : [];
+
+          setForm({
+            ...data,
+            fields: safeFields,
+            logicRules: safeRules,
+            actionsPipeline: safeActions,
+          });
+
+          if (safeFields.length > 0) {
+            setSelectedFieldId(safeFields[0].id);
           }
         }
       } catch (err) {

@@ -41,17 +41,22 @@ export function getFormStatusBadge(status: FormStatus): { label: string; classNa
     case 'published':
       return {
         label: 'Published',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        className: 'theme-badge-success',
       };
     case 'draft':
       return {
         label: 'Draft',
-        className: 'bg-amber-50 text-amber-700 border-amber-200',
+        className: 'theme-badge-warning',
       };
     case 'archived':
       return {
         label: 'Archived',
-        className: 'bg-slate-100 text-slate-600 border-slate-200',
+        className: 'theme-badge-neutral',
+      };
+    default:
+      return {
+        label: 'Draft',
+        className: 'bg-amber-50 text-amber-700 border-amber-200',
       };
   }
 }
@@ -61,22 +66,22 @@ export function getSubmissionStatusBadge(status: SubmissionStatus): { label: str
     case 'new':
       return {
         label: 'New',
-        className: 'bg-blue-50 text-blue-700 border-blue-200',
+        className: 'theme-badge-info',
       };
     case 'reviewed':
       return {
         label: 'Reviewed',
-        className: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        className: 'theme-badge-info',
       };
     case 'processed':
       return {
         label: 'Processed',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        className: 'theme-badge-success',
       };
     case 'flagged':
       return {
         label: 'Flagged',
-        className: 'bg-rose-50 text-rose-700 border-rose-200',
+        className: 'theme-badge-danger',
       };
   }
 }
@@ -86,17 +91,17 @@ export function getDomainStatusBadge(status: DomainStatus): { label: string; cla
     case 'active':
       return {
         label: 'Active',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        className: 'theme-badge-success',
       };
     case 'pending_dns':
       return {
         label: 'Pending DNS',
-        className: 'bg-amber-50 text-amber-700 border-amber-200',
+        className: 'theme-badge-warning',
       };
     case 'ssl_issuing':
       return {
         label: 'Issuing SSL',
-        className: 'bg-sky-50 text-sky-700 border-sky-200',
+        className: 'theme-badge-info',
       };
   }
 }
@@ -106,17 +111,17 @@ export function getIntegrationStatusBadge(status: IntegrationStatus): { label: s
     case 'connected':
       return {
         label: 'Connected',
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        className: 'theme-badge-success',
       };
     case 'disconnected':
       return {
         label: 'Disconnected',
-        className: 'bg-slate-100 text-slate-600 border-slate-200',
+        className: 'theme-badge-neutral',
       };
     case 'error':
       return {
         label: 'Error',
-        className: 'bg-rose-50 text-rose-700 border-rose-200',
+        className: 'theme-badge-danger',
       };
   }
 }

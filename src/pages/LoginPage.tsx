@@ -28,10 +28,10 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+    <div className="min-h-screen theme-app-shell flex items-center justify-center p-6">
+      <div className="w-full max-w-md theme-surface-card border border-theme rounded-2xl p-6 shadow-sm">
         <h1 className="text-center text-2xl font-black tracking-tight">FormFlow Agency Console</h1>
-        <p className="text-center text-sm text-slate-500 mt-1">Sign in with your credentials.</p>
+        <p className="text-center text-sm theme-text-muted mt-1">Sign in with your credentials.</p>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
@@ -41,7 +41,7 @@ export const LoginPage: React.FC = () => {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@company.com"
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 text-sm theme-input rounded-lg focus:outline-none"
             />
           </div>
 
@@ -52,21 +52,21 @@ export const LoginPage: React.FC = () => {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Enter your password"
-              className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2.5 text-sm theme-input rounded-lg focus:outline-none"
             />
           </div>
 
           <button
-            className="w-full mt-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs disabled:opacity-50"
+            className="w-full mt-2 px-4 py-2.5 text-sm font-bold theme-button-primary rounded-lg disabled:opacity-50"
             disabled={isSubmitting}
           >
             Sign In
           </button>
         </form>
 
-        {error && <p className="text-xs mt-4 text-red-600 text-center">{error}</p>}
+        {error && <p className="text-xs mt-4 theme-danger text-center">{error}</p>}
 
-        <p className="text-[11px] mt-4 text-slate-500 text-center">
+        <p className="text-[11px] mt-4 theme-text-muted text-center">
           Role and tenant are resolved from your authenticated account credentials.
         </p>
       </div>

@@ -14,6 +14,7 @@ import {
   UserProfile,
   Domain,
   FieldType,
+  TenantAccount,
 } from '../types';
 import { createDefaultField } from '../utils/formBuilderUtils';
 
@@ -166,7 +167,10 @@ class FormFlowDataStore {
       status,
       version: 1,
       publishedVersion: status === 'published' ? 1 : undefined,
-      fields,
+      fields: fields.map((field, index) => ({
+        ...field,
+        name: field.name || `field_${field.type || 'input'}_${index + 1}`,
+      })),
       settings: {
         submitButtonText: 'Submit Response',
         successMessage: 'Thank you! Your submission has been recorded.',
@@ -176,8 +180,108 @@ class FormFlowDataStore {
         backgroundColor: '#ffffff',
         fontFamily: 'Inter',
       },
+      logicRules: [],
+      actionsPipeline: [],
       createdAt: form.createdAt,
       updatedAt: form.updatedAt,
+    };
+  }
+
+  private normalizeDefinition(definition: Partial<FormDefinition> | undefined | null, fallback?: Form): FormDefinition {
+    const formId = definition?.id || fallback?.id || `form_${Date.now()}`;
+    const now = fallback?.createdAt || new Date().toISOString();
+    const status =
+      definition?.status === 'published' || definition?.status === 'draft' || definition?.status === 'archived'
+        ? definition.status
+        : (fallback?.status || 'draft');
+    const rawFields = Array.isArray(definition?.fields) ? definition.fields : [];
+    const fields = rawFields.map((field, index) => {
+      const baseName = field.name || '';
+      const inferredName = baseName || `field_${field.type || 'input'}_${index + 1}`;
+      return {
+        ...field,
+        name: inferredName,
+        required: !!field.required,
+        disabled: !!field.disabled,
+        hidden: !!field.hidden,
+      };
+    });
+
+    const logicRules = Array.isArray(definition?.logicRules)
+      ? definition.logicRules.map((rule, index) => ({
+          ...rule,
+          id: rule.id || `rule_${index + 1}`,
+          name: rule.name || `Logic Rule #${index + 1}`,
+          enabled: rule.enabled !== false,
+          matchType: rule.matchType === 'ANY' ? 'ANY' : 'ALL',
+          conditions: Array.isArray(rule.conditions)
+            ? rule.conditions.map((condition, cIdx) => ({
+                ...condition,
+                id: condition.id || `cond_${index + 1}_${cIdx + 1}`,
+                fieldId: condition.fieldId || '',
+                operator: condition.operator || 'equals',
+                value: condition.value || '',
+              }))
+            : [
+                {
+                  id: `cond_${index + 1}_1`,
+                  fieldId: '',
+                  operator: 'equals',
+                  value: '',
+                },
+              ],
+          actions: Array.isArray(rule.actions)
+            ? rule.actions.map((action, aIdx) => ({
+                ...action,
+                id: action.id || `act_${index + 1}_${aIdx + 1}`,
+                targetFieldId: action.targetFieldId || '',
+                action: action.action || 'show',
+              }))
+            : [
+                {
+                  id: `act_${index + 1}_1`,
+                  targetFieldId: '',
+                  action: 'show',
+                },
+              ],
+        }))
+      : [];
+
+    const actionsPipeline = Array.isArray(definition?.actionsPipeline)
+      ? definition.actionsPipeline
+      : [];
+
+    return {
+      id: formId,
+      name: definition?.name || fallback?.name || 'Untitled Form',
+      description: definition?.description || fallback?.description || '',
+      status,
+      version: definition?.version || 1,
+      publishedVersion: definition?.publishedVersion,
+      fields,
+      settings: {
+        submitButtonText: definition?.settings?.submitButtonText || 'Submit Response',
+        successMessage: definition?.settings?.successMessage || 'Thank you! Your submission has been recorded.',
+        redirectUrl: definition?.settings?.redirectUrl,
+        storeSubmissions: definition?.settings?.storeSubmissions,
+      },
+      theme: {
+        primaryColor: definition?.theme?.primaryColor || '#2563eb',
+        backgroundColor: definition?.theme?.backgroundColor || '#ffffff',
+        fontFamily: definition?.theme?.fontFamily || 'Inter',
+        borderRadius: definition?.theme?.borderRadius || 'md',
+        fontSize: definition?.theme?.fontSize || 'sm',
+        inputStyle: definition?.theme?.inputStyle || 'default',
+        buttonStyle: definition?.theme?.buttonStyle || 'solid',
+      },
+      logicRules,
+      actionsPipeline,
+      renderMode: definition?.renderMode || 'visual',
+      customHtml: definition?.customHtml || '',
+      customCss: definition?.customCss || '',
+      customJs: definition?.customJs || '',
+      createdAt: definition?.createdAt || now,
+      updatedAt: definition?.updatedAt || now,
     };
   }
 
@@ -192,6 +296,10 @@ class FormFlowDataStore {
 
   async getDashboardMetrics(): Promise<DashboardMetrics> {
     return this.request<DashboardMetrics>('/dashboard/metrics');
+  }
+
+  async getTenants(): Promise<TenantAccount[]> {
+    return this.request<TenantAccount[]>('/tenants');
   }
 
   async getForms(query?: string, status?: FormStatus | 'all'): Promise<Form[]> {
@@ -226,14 +334,25 @@ class FormFlowDataStore {
   async getFormDefinition(id: string): Promise<FormDefinition> {
     try {
       const definition = await this.request<FormDefinition>(`/forms/${id}/definition`);
-      return definition;
+      return this.normalizeDefinition(definition, await this.getFormById(id).catch(() => undefined));
     } catch {
-      const form = await this.getFormById(id);
-      if (!form) {
-        return this.request<FormDefinition>(`/forms/${id}/definition`);
+      const form = await this.getFormById(id).catch(() => undefined);
+      if (form) {
+        const status = form.status === 'published' ? 'published' : 'draft';
+        return this.buildFallbackDefinition(form, status);
       }
-      const status = form.status === 'published' ? 'published' : 'draft';
-      return this.buildFallbackDefinition(form, status);
+
+      const fallbackAt = new Date().toISOString();
+      const fallbackForm = {
+        id,
+        name: 'Untitled Form',
+        description: '',
+        status: 'draft' as FormStatus,
+        createdAt: fallbackAt,
+        updatedAt: fallbackAt,
+      } as Form;
+
+      return this.buildFallbackDefinition(fallbackForm, 'draft');
     }
   }
 
