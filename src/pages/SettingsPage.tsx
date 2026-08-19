@@ -10,6 +10,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import { AppRole } from '../auth/AuthContext';
 import { apiService } from '../services/apiService';
 
 export const SettingsPage: React.FC = () => {
@@ -71,12 +72,16 @@ export const SettingsPage: React.FC = () => {
 
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">Role Title</label>
-              <input
-                type="text"
+              <select
                 value={user.role}
-                onChange={(e) => setUser({ ...user, role: e.target.value })}
+                onChange={(e) => setUser({ ...user, role: e.target.value as AppRole })}
                 className="w-full px-3 py-2 text-xs font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
-              />
+              >
+                <option value="Super Admin">Super Admin</option>
+                <option value="Admin">Admin</option>
+                <option value="Developer">Developer</option>
+                <option value="User">User</option>
+              </select>
             </div>
 
             <div className="space-y-1.5">

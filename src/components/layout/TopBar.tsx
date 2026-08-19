@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   ExternalLink,
+  Building2,
 } from 'lucide-react';
 import { UserProfile, NotificationItem } from '../../types';
 import { apiService } from '../../services/apiService';
@@ -20,9 +21,10 @@ import { formatDate } from '../../utils/formatters';
 interface TopBarProps {
   user: UserProfile | null;
   onOpenMobileMenu: () => void;
+  onLogout: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ user, onOpenMobileMenu }) => {
+export const TopBar: React.FC<TopBarProps> = ({ user, onOpenMobileMenu, onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -62,6 +64,8 @@ export const TopBar: React.FC<TopBarProps> = ({ user, onOpenMobileMenu }) => {
     if (path.startsWith('/domains')) return 'Custom Domains & SSL';
     if (path.startsWith('/analytics')) return 'Performance Analytics';
     if (path.startsWith('/settings')) return 'Platform Settings';
+    if (path === '/super-agency-dashboard') return 'Super Agency Control Center';
+    if (path === '/agency-dashboard') return 'Agency Operations';
     return 'Dashboard';
   };
 
@@ -219,6 +223,10 @@ export const TopBar: React.FC<TopBarProps> = ({ user, onOpenMobileMenu }) => {
                   <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded">
                     {user?.plan || 'Growth Plan'}
                   </span>
+                  <span className="text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.2 rounded flex items-center gap-1">
+                    <Building2 className="w-3 h-3" />
+                    {user?.role}
+                  </span>
                 </div>
               </div>
 
@@ -244,7 +252,7 @@ export const TopBar: React.FC<TopBarProps> = ({ user, onOpenMobileMenu }) => {
               <button
                 onClick={() => {
                   setShowUserDropdown(false);
-                  alert('Logged out.');
+                  onLogout();
                 }}
                 className="w-full text-left px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50"
               >

@@ -25,6 +25,19 @@ import {
 } from './mockData';
 
 // Local storage keys or in-memory mutable cache for prototype responsiveness
+const LOCAL_STORE_KEY = 'formflow_ui_store_v1';
+
+interface LocalStoreSnapshot {
+  forms: Form[];
+  submissions: FormSubmission[];
+  integrations: Integration[];
+  domains: Domain[];
+  notifications: NotificationItem[];
+  user: UserProfile;
+  formDefinitions: [string, FormDefinition][];
+  formVersions: [string, FormVersion[]][];
+}
+
 class FormFlowDataStore {
   private forms: Form[] = [...initialForms];
   private submissions: FormSubmission[] = [...initialSubmissions];
@@ -34,6 +47,64 @@ class FormFlowDataStore {
   private notifications: NotificationItem[] = [...initialNotifications];
   private formDefinitions: Map<string, FormDefinition> = new Map();
   private formVersions: Map<string, FormVersion[]> = new Map();
+
+  constructor() {
+    this.loadFromLocalStore();
+  }
+
+  private isBrowserStorageAvailable(): boolean {
+    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+  }
+
+  private snapshotForStorage(): LocalStoreSnapshot {
+    return {
+      forms: this.forms,
+      submissions: this.submissions,
+      integrations: this.integrations,
+      domains: this.domains,
+      notifications: this.notifications,
+      user: this.user,
+      formDefinitions: [...this.formDefinitions.entries()],
+      formVersions: [...this.formVersions.entries()],
+    };
+  }
+
+  private loadFromLocalStore() {
+    if (!this.isBrowserStorageAvailable()) {
+      return;
+    }
+    const raw = window.localStorage.getItem(LOCAL_STORE_KEY);
+    if (!raw) {
+      return;
+    }
+    try {
+      const data = JSON.parse(raw) as LocalStoreSnapshot;
+      if (Array.isArray(data.forms)) this.forms = [...data.forms];
+      if (Array.isArray(data.submissions)) this.submissions = [...data.submissions];
+      if (Array.isArray(data.integrations)) this.integrations = [...data.integrations];
+      if (Array.isArray(data.domains)) this.domains = [...data.domains];
+      if (Array.isArray(data.notifications)) this.notifications = [...data.notifications];
+      if (data.user) this.user = data.user;
+      if (Array.isArray(data.formDefinitions)) {
+        this.formDefinitions = new Map(data.formDefinitions);
+      }
+      if (Array.isArray(data.formVersions)) {
+        const entries = data.formVersions.filter((entry): entry is [string, FormVersion[]] => {
+          return Array.isArray(entry) && entry.length === 2 && typeof entry[0] === 'string' && Array.isArray(entry[1]);
+        });
+        this.formVersions = new Map(entries);
+      }
+    } catch {
+      return;
+    }
+  }
+
+  private persistToLocalStore() {
+    if (!this.isBrowserStorageAvailable()) {
+      return;
+    }
+    window.localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(this.snapshotForStorage()));
+  }
 
   // Helper delay simulation
   private async delay(ms = 120): Promise<void> {
@@ -124,6 +195,7 @@ class FormFlowDataStore {
     const versions = [v1];
     this.formVersions.set(id, versions);
     this.formDefinitions.set(id, JSON.parse(JSON.stringify(baseDef)));
+    this.persistToLocalStore();
     return versions;
   }
 
@@ -232,6 +304,7 @@ class FormFlowDataStore {
       };
 
       versions.push(draftVersion);
+      this.persistToLocalStore();
     }
 
     const def = JSON.parse(JSON.stringify(draftVersion.definition));
@@ -268,6 +341,7 @@ class FormFlowDataStore {
     }
 
     this.formDefinitions.set(id, JSON.parse(JSON.stringify(draftVersion.definition)));
+    this.persistToLocalStore();
 
     if (form) {
       form.name = definition.name;
@@ -323,6 +397,7 @@ class FormFlowDataStore {
     }
 
     this.formDefinitions.set(formId, JSON.parse(JSON.stringify(targetVersion.definition)));
+    this.persistToLocalStore();
 
     return {
       publishedVersion: JSON.parse(JSON.stringify(targetVersion)),
@@ -379,6 +454,7 @@ class FormFlowDataStore {
     }
 
     this.formDefinitions.set(formId, JSON.parse(JSON.stringify(clonedDef)));
+    this.persistToLocalStore();
 
     return JSON.parse(JSON.stringify(newPublishedVersion));
   }
@@ -395,6 +471,7 @@ class FormFlowDataStore {
       conversionRate: 0.0,
     };
     this.forms.unshift(created);
+    this.persistToLocalStore();
     return created;
   }
 
@@ -407,6 +484,7 @@ class FormFlowDataStore {
       status,
       updatedAt: new Date().toISOString(),
     };
+    this.persistToLocalStore();
     return this.forms[index];
   }
 
@@ -414,6 +492,7 @@ class FormFlowDataStore {
     await this.delay();
     const initialLen = this.forms.length;
     this.forms = this.forms.filter((f) => f.id !== id);
+    this.persistToLocalStore();
     return this.forms.length < initialLen;
   }
 
@@ -425,6 +504,7 @@ class FormFlowDataStore {
         form.viewsCount > 0
           ? Math.round(((form.submissionsCount || 0) / form.viewsCount) * 1000) / 10
           : 0;
+      this.persistToLocalStore();
     }
   }
 
@@ -504,6 +584,7 @@ class FormFlowDataStore {
           : 100;
       form.updatedAt = new Date().toISOString();
     }
+    this.persistToLocalStore();
 
     return submission;
   }
@@ -538,6 +619,7 @@ class FormFlowDataStore {
     const sub = this.submissions.find((s) => s.id === submissionId);
     if (!sub) throw new Error('Submission not found');
     sub.actionExecutionStatus = actionStatuses;
+    this.persistToLocalStore();
     return JSON.parse(JSON.stringify(sub));
   }
 
@@ -556,6 +638,7 @@ class FormFlowDataStore {
       status,
       lastSync: status === 'connected' ? new Date().toISOString() : this.integrations[idx].lastSync,
     };
+    this.persistToLocalStore();
     return this.integrations[idx];
   }
 
@@ -578,6 +661,7 @@ class FormFlowDataStore {
       cnameRecord: 'ingress.formflow.io',
     };
     this.domains.push(newDom);
+    this.persistToLocalStore();
     return newDom;
   }
 
@@ -597,11 +681,13 @@ class FormFlowDataStore {
     await this.delay(50);
     const n = this.notifications.find((item) => item.id === id);
     if (n) n.read = true;
+    this.persistToLocalStore();
   }
 
   async markAllNotificationsRead(): Promise<void> {
     await this.delay(50);
     this.notifications.forEach((n) => (n.read = true));
+    this.persistToLocalStore();
   }
 }
 

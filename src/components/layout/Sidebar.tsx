@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
+  Building2,
   LayoutDashboard,
   FileText,
   Inbox,
@@ -20,18 +21,21 @@ interface SidebarProps {
   user: UserProfile | null;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  onLogout: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ user, mobileOpen, onCloseMobile }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ user, mobileOpen, onCloseMobile, onLogout }) => {
   const location = useLocation();
-
+  const hasRole = (value: string[]) => user && value.includes(user.role);
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    ...(user?.role === 'Super Admin' ? [{ name: 'Super Agency', path: '/super-agency-dashboard', icon: Building2 }] : []),
+    ...(user?.role !== 'User' ? [{ name: 'Agency Dashboard', path: '/agency-dashboard', icon: BarChart3 }] : []),
     { name: 'Forms', path: '/forms', icon: FileText },
     { name: 'Submissions', path: '/submissions', icon: Inbox },
-    { name: 'Integrations', path: '/integrations', icon: Layers },
-    { name: 'Domains', path: '/domains', icon: Globe },
-    { name: 'Analytics', path: '/analytics', icon: BarChart3 },
+    ...(hasRole(['Super Admin', 'Admin', 'Developer']) ? [{ name: 'Integrations', path: '/integrations', icon: Layers }] : []),
+    ...(hasRole(['Super Admin', 'Admin']) ? [{ name: 'Domains', path: '/domains', icon: Globe }] : []),
+    ...(hasRole(['Super Admin', 'Admin', 'Developer']) ? [{ name: 'Analytics', path: '/analytics', icon: BarChart3 }] : []),
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
@@ -138,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, mobileOpen, onCloseMobil
             Settings
           </NavLink>
           <button
-            onClick={() => alert('Logged out successfully.')}
+            onClick={onLogout}
             className="flex items-center gap-1 text-slate-500 hover:text-rose-600 transition-colors"
             title="Log out"
           >

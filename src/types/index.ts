@@ -17,6 +17,7 @@ export interface Form {
   createdAt: string;
   updatedAt: string;
   domain?: string;
+  tenantId?: string;
   theme?: FormTheme;
 }
 
@@ -63,6 +64,7 @@ export interface FormSubmission {
   formId: string;
   formVersionId: string | number;
   formName?: string;
+  tenantId?: string;
   submittedAt: string;
   fields: Record<string, any>;
   data?: Record<string, any>;
@@ -91,6 +93,7 @@ export interface Integration {
   connectedFormsCount: number;
   webhookUrl?: string;
   apiKeySet?: boolean;
+  tenantId?: string;
 }
 
 export type DomainStatus = 'active' | 'pending_dns' | 'ssl_issuing';
@@ -104,6 +107,7 @@ export interface Domain {
   createdAt: string;
   isDefault?: boolean;
   cnameRecord: string;
+  tenantId?: string;
 }
 
 export interface DashboardMetrics {
@@ -121,10 +125,11 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: 'Super Admin' | 'Admin' | 'Developer' | 'User';
   avatarUrl?: string;
   organizationName: string;
   plan: 'Growth Plan' | 'Enterprise' | 'Starter';
+  tenantId?: string;
 }
 
 export interface NotificationItem {
@@ -134,4 +139,19 @@ export interface NotificationItem {
   timestamp: string;
   read: boolean;
   type: 'submission' | 'domain' | 'integration' | 'system';
+  tenantId?: string;
+}
+
+export type TenantStatus = 'active' | 'inactive' | 'suspended' | 'trial';
+
+export interface TenantAccount {
+  id: string;
+  name: string;
+  slug: string;
+  status: TenantStatus;
+  plan: 'Starter' | 'Growth Plan' | 'Enterprise';
+  createdAt: string;
+  updatedAt?: string;
+  adminEmail?: string;
+  adminName?: string;
 }

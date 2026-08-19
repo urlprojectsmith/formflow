@@ -1,0 +1,35 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: formflow-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PORT=4450
+      - NODE_ENV=production
+      - CORS_ORIGIN=*
+      - DB_PATH=/app/data/formflow.db
+      - DB_BACKUP_DIR=/app/data/backups
+    ports:
+      - "4450:4450"
+    volumes:
+      - formflow_api_data:/app/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:4450
+    container_name: formflow-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "4353:80"
+
+volumes:
+  formflow_api_data:
