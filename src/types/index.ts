@@ -130,6 +130,8 @@ export interface UserProfile {
   organizationName: string;
   plan: 'Growth Plan' | 'Enterprise' | 'Starter';
   tenantId?: string;
+  tenantIds?: string[];
+  password?: string;
 }
 
 export interface NotificationItem {

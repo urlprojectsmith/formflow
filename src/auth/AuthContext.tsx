@@ -15,80 +15,33 @@ interface AuthUser extends UserProfile {
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  login: (input: LoginInput) => boolean;
+  login: (input: LoginInput) => Promise<boolean>;
   logout: () => void;
   canAccess: (roles?: AppRole[]) => boolean;
 }
 
 const STORAGE_KEY = 'formflow_auth_user';
+const STORAGE_TOKEN_KEY = 'formflow_auth_token';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
-const ROLE_SEEDS: Record<
-  AppRole,
-  Pick<AuthUser, 'name' | 'organizationName' | 'plan' | 'avatarUrl'> & { tenantId?: string }
-> = {
-  'Super Admin': {
-    name: 'Platform Admin',
-    organizationName: 'Platform Organization',
-    plan: 'Enterprise',
-    tenantId: undefined,
-    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=200',
-  },
-  Admin: {
-    name: 'Agency Admin',
-    organizationName: 'Agency Workspace',
-    plan: 'Growth Plan',
-    avatarUrl:
-      'https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&q=80&w=200',
-  },
-  Developer: {
-    name: 'Solution Developer',
-    organizationName: 'Agency Workspace',
-    plan: 'Growth Plan',
-    avatarUrl:
-      'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&q=80&w=200',
-  },
-  User: {
-    name: 'Platform User',
-    organizationName: 'Agency Workspace',
-    plan: 'Starter',
-    avatarUrl:
-      'https://images.unsplash.com/photo-1534665482403-a909d0d7a5af?auto=format&fit=crop&q=80&w=200',
-  },
-};
+interface ApiError {
+  ok: false;
+  error: string;
+}
 
-const resolveRoleFromEmail = (email: string): AppRole => {
-  const normalized = email.toLowerCase();
-  if (normalized.includes('superadmin')) return 'Super Admin';
-  if (normalized.includes('admin')) return 'Admin';
-  if (normalized.includes('developer')) return 'Developer';
-  return 'User';
-};
-
-const resolveTenant = (role: AppRole, email: string): string | undefined => {
-  if (role === 'Super Admin') return undefined;
-  return email.endsWith('@formflow.io') ? 'tenant_acme' : undefined;
-};
-
-const seedUser = (email: string): AuthUser => {
-  const resolvedRole = resolveRoleFromEmail(email);
-  const seed = ROLE_SEEDS[resolvedRole];
-
-  return {
-    id: `${resolvedRole.toLowerCase().replace(/ /g, '-')}-user`,
-    email,
-    role: resolvedRole,
-    tenantId: resolveTenant(resolvedRole, email),
-    avatarUrl: seed.avatarUrl,
-    organizationName: seed.organizationName,
-    plan: seed.plan,
-    name: seed.name,
+interface ApiOk {
+  ok: true;
+  data: {
+    token: string;
+    user: AuthUser;
+    expiresAt: number;
   };
-};
+}
 
 const defaultContext: AuthContextValue = {
   user: null,
   isAuthenticated: false,
-  login: () => false,
+  login: () => Promise.resolve(false),
   logout: () => undefined,
   canAccess: () => false,
 };
@@ -108,7 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   });
 
-  const login = ({ email, password }: LoginInput): boolean => {
+  const login = async ({ email, password }: LoginInput): Promise<boolean> => {
     const cleanedEmail = String(email || '').toLowerCase().trim();
     const cleanedPassword = String(password || '').trim();
 
@@ -116,15 +69,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     }
 
-    const profile = seedUser(cleanedEmail);
-    setUser(profile);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-    return true;
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: cleanedEmail, password: cleanedPassword }),
+      });
+      const raw = (await res.json().catch(() => null)) as ApiOk | ApiError | null;
+      if (!res.ok || !raw || raw.ok !== true || !raw.data?.token || !raw.data?.user) {
+        return false;
+      }
+
+      const authData = raw as ApiOk;
+      const profile = authData.data.user;
+      setUser(profile);
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      window.localStorage.setItem(STORAGE_TOKEN_KEY, authData.data.token || '');
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const logout = () => {
     setUser(null);
     window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(STORAGE_TOKEN_KEY);
   };
 
   const value = useMemo(

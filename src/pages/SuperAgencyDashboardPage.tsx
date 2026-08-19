@@ -33,9 +33,9 @@ type UserFormInput = {
   name: string;
   email: string;
   role: TenantFormRole;
-  tenantId: string;
   organizationName: string;
-  plan: TenantAccount['plan'];
+  tenantIds: string[];
+  password: string;
 };
 
 const ROLE_OPTIONS: TenantFormRole[] = ['Admin', 'Developer', 'User'];
@@ -63,9 +63,9 @@ const defaultUserForm = (tenant?: TenantAccount | null): UserFormInput => ({
   name: '',
   email: '',
   role: 'User',
-  tenantId: tenant?.id || '',
   organizationName: tenant?.name || '',
-  plan: 'Starter',
+  tenantIds: tenant?.id ? [tenant.id] : [],
+  password: '',
 });
 
 export const SuperAgencyDashboardPage: React.FC = () => {
@@ -129,7 +129,11 @@ export const SuperAgencyDashboardPage: React.FC = () => {
   );
 
   const selectedTenantUsers = useMemo(
-    () => users.filter((user) => user.tenantId === selectedTenant?.id),
+    () =>
+      users.filter(
+        (user) =>
+          user.tenantId === selectedTenant?.id || (Array.isArray(user.tenantIds) && user.tenantIds.includes(selectedTenant?.id || ''))
+      ),
     [users, selectedTenant]
   );
 
@@ -150,7 +154,6 @@ export const SuperAgencyDashboardPage: React.FC = () => {
     if (tenant) {
       setUserForm({
         ...defaultUserForm(tenant),
-        tenantId: tenant.id,
       });
     } else {
       setUserForm(defaultUserForm(null));
@@ -229,7 +232,13 @@ export const SuperAgencyDashboardPage: React.FC = () => {
 
     const remainingTenants = tenants.filter((item) => item.id !== tenantId);
     setTenants(remainingTenants);
-    setUsers((current) => current.filter((item) => item.tenantId !== tenantId));
+    setUsers((current) =>
+      current.filter(
+        (item) =>
+          item.tenantId !== tenantId &&
+          !(Array.isArray(item.tenantIds) && item.tenantIds.includes(tenantId))
+      )
+    );
     if (selectedTenantId === tenantId) {
       setSelectedTenantId(remainingTenants[0]?.id || '');
     }
@@ -276,32 +285,49 @@ export const SuperAgencyDashboardPage: React.FC = () => {
       setUserStatusMessage('Select an account first.');
       return;
     }
-    if (!userForm.name.trim() || !userForm.email.trim()) {
+    const trimmedName = userForm.name.trim();
+    const trimmedEmail = userForm.email.trim().toLowerCase();
+    const trimmedPassword = userForm.password.trim();
+    if (!trimmedName || !trimmedEmail) {
       setUserStatusMessage('User name and email are required.');
+      return;
+    }
+    const tenantAssignments = Array.from(new Set(userForm.tenantIds.map((tenantId) => tenantId.trim()).filter(Boolean)));
+    if (!tenantAssignments.length) {
+      setUserStatusMessage('Select at least one agency account.');
       return;
     }
 
     if (editingUserId) {
+      const passwordPatch = trimmedPassword || undefined;
       setUsers((current) =>
         current.map((user) =>
           user.id === editingUserId
             ? {
                 ...user,
-                name: userForm.name.trim(),
-                email: userForm.email.trim(),
+                name: trimmedName,
+                email: trimmedEmail,
                 role: userForm.role,
-                tenantId: selectedTenant.id,
+                tenantIds: tenantAssignments,
+                tenantId: tenantAssignments[0],
                 organizationName: selectedTenant.name,
-                plan: userForm.plan,
+                ...(passwordPatch ? { password: passwordPatch } : {}),
               }
             : user
         )
       );
       setUserStatusMessage(`User ${userForm.name} updated.`);
     } else {
-      const normalizedEmail = userForm.email.trim().toLowerCase();
+      if (!trimmedPassword) {
+        setUserStatusMessage('Password is required for new users.');
+        return;
+      }
       const emailExists = users.some(
-        (user) => user.tenantId === selectedTenant.id && user.email.toLowerCase() === normalizedEmail
+        (user) =>
+          user.email.toLowerCase() === trimmedEmail &&
+          tenantAssignments.some(
+            (tenantId) => user.tenantId === tenantId || (Array.isArray(user.tenantIds) && user.tenantIds.includes(tenantId))
+          )
       );
       if (emailExists) {
         setUserStatusMessage('This email already exists in the selected account.');
@@ -311,12 +337,14 @@ export const SuperAgencyDashboardPage: React.FC = () => {
       const newUser: UserProfile = {
         id: `usr_${Date.now()}`,
         name: userForm.name.trim(),
-        email: userForm.email.trim(),
+        email: trimmedEmail,
         role: userForm.role,
-        tenantId: selectedTenant.id,
+        tenantId: tenantAssignments[0],
+        tenantIds: tenantAssignments,
         avatarUrl: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(userForm.email.trim())}`,
         organizationName: selectedTenant.name,
-        plan: userForm.plan,
+        password: trimmedPassword,
+        plan: userForm.role === 'Admin' || userForm.role === 'Developer' ? 'Growth Plan' : 'Starter',
       };
       setUsers((current) => [newUser, ...current]);
       setUserStatusMessage(`User ${userForm.name} added.`);
@@ -331,21 +359,40 @@ export const SuperAgencyDashboardPage: React.FC = () => {
       name: user.name,
       email: user.email,
       role: (user.role === 'Admin' || user.role === 'Developer' || user.role === 'User' ? user.role : 'User'),
-      tenantId: user.tenantId || selectedTenantId,
+      tenantIds:
+        Array.isArray(user.tenantIds) && user.tenantIds.length > 0
+          ? user.tenantIds.filter(Boolean)
+          : [user.tenantId || selectedTenantId || ''],
       organizationName: user.organizationName,
-      plan: user.plan,
+      password: user.password || '',
     });
     setUserStatusMessage(`Editing user: ${user.name}`);
   };
 
   const onDeleteUser = (userId: string) => {
     if (!window.confirm('Delete this user from this account?')) return;
-    setUsers((current) => current.filter((user) => user.id !== userId));
+    if (!selectedTenant) return;
+    setUsers((current) =>
+      current
+        .map((user) => {
+          if (user.id !== userId) return user;
+          const remainingAssignments = Array.isArray(user.tenantIds)
+            ? user.tenantIds.filter((tenantId) => tenantId !== selectedTenant.id)
+            : [];
+          if (remainingAssignments.length === 0) {
+            return null;
+          }
+          return {
+            ...user,
+            tenantIds: remainingAssignments,
+            tenantId: remainingAssignments[0],
+          };
+        })
+        .filter((user): user is UserProfile => user !== null)
+    );
     setUserStatusMessage('User removed.');
     setEditingUserId(null);
-    if (selectedTenant) {
-      setTenantForm(defaultTenantForm());
-    }
+    setUserForm(defaultUserForm(selectedTenant));
   };
 
   const onClearUserForm = () => {
@@ -470,10 +517,12 @@ export const SuperAgencyDashboardPage: React.FC = () => {
                 <th className="px-4 py-3 font-semibold">Primary Admin</th>
                 <th className="px-4 py-3 font-semibold">Actions</th>
               </tr>
-            </thead>
+              </thead>
             <tbody>
               {tenants.map((tenant) => {
-                const tenantUserCount = users.filter((user) => user.tenantId === tenant.id).length;
+                const tenantUserCount = users.filter(
+                  (user) => user.tenantId === tenant.id || (Array.isArray(user.tenantIds) && user.tenantIds.includes(tenant.id))
+                ).length;
                 const isSelected = selectedTenantId === tenant.id;
                 return (
                   <tr
@@ -589,17 +638,38 @@ export const SuperAgencyDashboardPage: React.FC = () => {
               </option>
             ))}
           </select>
-          <select
-            value={userForm.plan}
-            onChange={(event) => setUserForm((current) => ({ ...current, plan: event.target.value as TenantAccount['plan'] }))}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg"
-          >
-            {PLAN_OPTIONS.map((plan) => (
-              <option value={plan} key={plan}>
-                {plan}
-              </option>
-            ))}
-          </select>
+          <div className="md:col-span-3 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+            <p className="text-[11px] font-bold text-slate-600 mb-1">Assign to agency account(s)</p>
+            <div className="flex flex-wrap gap-2">
+              {tenants.map((tenant) => {
+                const checked = userForm.tenantIds.includes(tenant.id);
+                return (
+                  <label key={tenant.id} className="inline-flex items-center gap-1.5 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) =>
+                        setUserForm((current) => ({
+                          ...current,
+                          tenantIds: event.target.checked
+                            ? Array.from(new Set([...current.tenantIds, tenant.id]))
+                            : current.tenantIds.filter((id) => id !== tenant.id),
+                        }))
+                      }
+                    />
+                    {tenant.name}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+          <input
+            value={userForm.password}
+            onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}
+            type="password"
+            placeholder="Set user password"
+            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg"
+          />
           <button
             type="submit"
             className="px-3 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex items-center justify-center gap-1.5"
@@ -623,7 +693,6 @@ export const SuperAgencyDashboardPage: React.FC = () => {
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                 <th className="px-4 py-3 font-semibold">Organization</th>
                 <th className="px-4 py-3 font-semibold">Role</th>
-                <th className="px-4 py-3 font-semibold">Plan</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
                 <th className="px-4 py-3 font-semibold">Actions</th>
               </tr>
@@ -631,10 +700,18 @@ export const SuperAgencyDashboardPage: React.FC = () => {
             <tbody>
               {selectedTenant ? (
                 selectedTenantUsers.map((user) => (
-                  <tr key={user.id} className="border-b border-slate-100">
-                    <td className="px-4 py-3 text-slate-900 font-semibold">{selectedTenant.name}</td>
+                    <tr key={user.id} className="border-b border-slate-100">
+                    <td className="px-4 py-3 text-slate-900 font-semibold">
+                      {user.tenantId === selectedTenant?.id
+                        ? selectedTenant?.name
+                        : Array.isArray(user.tenantIds)
+                          ? user.tenantIds
+                              .map((tenantId) => tenants.find((tenant) => tenant.id === tenantId)?.name)
+                              .filter(Boolean)
+                              .join(', ')
+                          : user.organizationName}
+                    </td>
                     <td className="px-4 py-3 text-slate-700">{user.role}</td>
-                    <td className="px-4 py-3 text-slate-700">{user.plan}</td>
                     <td className="px-4 py-3 text-slate-700">{user.email}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -658,14 +735,14 @@ export const SuperAgencyDashboardPage: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500 text-sm" colSpan={5}>
+                  <td className="px-4 py-6 text-slate-500 text-sm" colSpan={4}>
                     Select an agency account to view scoped users.
                   </td>
                 </tr>
               )}
               {selectedTenant && selectedTenantUsers.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500 text-sm" colSpan={5}>
+                  <td className="px-4 py-6 text-slate-500 text-sm" colSpan={4}>
                     No users for this account yet. Add a user using the form above.
                   </td>
                 </tr>

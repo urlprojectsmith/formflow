@@ -9,8 +9,6 @@ import {
   initialDomains as seedDomains,
   initialNotifications as seedNotifications,
   initialTenants as seedTenants,
-  initialTenantUsers,
-  initialUserProfile,
 } from '../src/services/mockData';
 import { createDefaultField } from '../src/utils/formBuilderUtils';
 import {
@@ -32,7 +30,22 @@ dotenv.config();
 
 type Role = 'Super Admin' | 'Admin' | 'Developer' | 'User';
 type AuthUser = UserProfile;
+type InternalAuthUser = AuthUser & { password: string };
 type AuthRequest = express.Request & { authUser?: AuthUser };
+
+type SeedCredential = {
+  email: string;
+  password: string;
+  role: Role;
+  tenantId?: string;
+  name: string;
+  organizationName: string;
+  avatarUrl: string;
+  plan: AuthUser['plan'];
+};
+type LoginUserSeed = SeedCredential & {
+  tenantIds: string[];
+};
 
 interface ApiEnvelope<T> {
   data: T;
@@ -59,6 +72,59 @@ interface IntegrationTestResult {
 const APP_ROLES: Role[] = ['Super Admin', 'Admin', 'Developer', 'User'];
 const ALLOWED_FORM_STATUSES: FormStatusType[] = ['published', 'draft', 'archived'];
 const ALLOWED_INTEGRATION_STATUSES = ['connected', 'disconnected', 'error'];
+const DEFAULT_USER_PASSWORD = 'Welcome@2026';
+const LOGIN_CREDENTIALS: LoginUserSeed[] = [
+  {
+    email: 'superadmin@formflow.io',
+    password: 'SuperAdmin@2026',
+    role: 'Super Admin',
+    tenantId: undefined,
+    tenantIds: [],
+    name: 'Platform Admin',
+    organizationName: 'Summit FormFlow Holdings',
+    plan: 'Enterprise',
+    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=200',
+  },
+  {
+    email: 'admin@tenant-acme.local',
+    password: 'Admin@2026',
+    role: 'Admin',
+    tenantId: 'tenant_acme',
+    tenantIds: ['tenant_acme'],
+    name: 'Agency Admin',
+    organizationName: 'Agency Workspace',
+    plan: 'Growth Plan',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&q=80&w=200',
+  },
+  {
+    email: 'developer@tenant-acme.local',
+    password: 'Developer@2026',
+    role: 'Developer',
+    tenantId: 'tenant_acme',
+    tenantIds: ['tenant_acme'],
+    name: 'Solution Developer',
+    organizationName: 'Agency Workspace',
+    plan: 'Growth Plan',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&q=80&w=200',
+  },
+  {
+    email: 'user@tenant-acme.local',
+    password: 'User@2026',
+    role: 'User',
+    tenantId: 'tenant_acme',
+    tenantIds: ['tenant_acme'],
+    name: 'Platform User',
+    organizationName: 'Agency Workspace',
+    plan: 'Starter',
+    avatarUrl:
+      'https://images.unsplash.com/photo-1534665482403-a909d0d7a5af?auto=format&fit=crop&q=80&w=200',
+  },
+];
+
+const normalizeEmail = (email: string) => String(email || '').trim().toLowerCase();
+
 const PORT = Number(process.env.PORT || 4450);
 const SECRET = process.env.WEBHOOK_SIGNING_SECRET || '';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
@@ -160,10 +226,7 @@ class DataStore {
   private submissions: FormSubmission[] = [...seedSubmissions];
   private integrations: Integration[] = [...seedIntegrations];
   private domains: Domain[] = [...seedDomains];
-  private users: AuthUser[] = [
-    { ...initialUserProfile, role: 'Admin', plan: 'Growth Plan' },
-    ...initialTenantUsers,
-  ];
+  private users: InternalAuthUser[] = [];
   private notifications: NotificationItem[] = [...seedNotifications];
   private formDefinitions = new Map<string, FormDefinition>();
   private formVersions = new Map<string, FormVersion[]>();
@@ -179,9 +242,59 @@ class DataStore {
     const snapshot = this.persistence.load();
     if (snapshot) {
       this.loadSnapshot(snapshot);
+      if (!this.tenants.length) {
+        this.tenants = [this.getDefaultTenant()];
+      }
+      if (!this.users.length) {
+        this.users = this.buildSeedUsers();
+      }
       return;
     }
+    this.tenants = this.tenants.length > 0 ? [...this.tenants] : [this.getDefaultTenant()];
+    this.users = this.buildSeedUsers();
     this.persist();
+  }
+
+  private getDefaultTenant(): TenantAccount {
+    return {
+      id: DEFAULT_TENANT_ID,
+      name: 'Acme Growth Labs',
+      slug: 'acme',
+      status: 'active',
+      plan: 'Growth Plan',
+      createdAt: nowISO(),
+      adminName: 'Agency Admin',
+      adminEmail: 'admin@tenant-acme.local',
+    };
+  }
+
+  private buildSeedUsers(): InternalAuthUser[] {
+    const baseTenantIds = this.tenants.length ? this.tenants.map((tenant) => tenant.id) : [DEFAULT_TENANT_ID];
+    const ensureTenantExists = (tenantId?: string) =>
+      !!tenantId && this.tenants.some((tenant) => tenant.id === tenantId)
+        ? tenantId
+        : tenantId && baseTenantIds.includes(tenantId)
+          ? tenantId
+          : undefined;
+
+    const seedUsers = LOGIN_CREDENTIALS.map((seed) => ({
+      id: `seed_${seed.role.toLowerCase().replace(/ /g, '-')}_${seed.email}`,
+      email: seed.email,
+      password: seed.password,
+      role: seed.role,
+      tenantId: ensureTenantExists(seed.tenantId),
+      tenantIds: Array.from(new Set(seed.tenantIds.map((tenantId) => tenantId).filter(Boolean))),
+      name: seed.name,
+      avatarUrl: seed.avatarUrl,
+      organizationName: seed.organizationName,
+      plan: seed.plan,
+    }));
+
+    const unique = new Map<string, InternalAuthUser>();
+    for (const user of seedUsers) {
+      unique.set(user.email, user);
+    }
+    return Array.from(unique.values());
   }
 
   private persist() {
@@ -214,7 +327,29 @@ class DataStore {
       ? [...snapshot.integrations]
       : [...seedIntegrations];
     this.domains = snapshot?.domains ? [...snapshot.domains] : [...seedDomains];
-    this.users = snapshot?.users ? [...(snapshot.users as AuthUser[])] : [{ ...initialUserProfile, role: 'Admin', plan: 'Growth Plan' }, ...initialTenantUsers];
+    if (Array.isArray(snapshot?.users) && snapshot.users.length > 0) {
+      this.users = (snapshot.users as Partial<InternalAuthUser>[]).map((entry) => ({
+        id: String(entry.id || crypto.randomBytes(4).toString('hex')),
+        email: normalizeEmail(entry.email || ''),
+        password: String(entry.password || DEFAULT_USER_PASSWORD),
+        role: (entry.role as Role) || 'User',
+        tenantId: normalizeEmail(entry.tenantId || ''),
+        tenantIds: Array.isArray(entry.tenantIds) && entry.tenantIds.length > 0
+          ? (entry.tenantIds as string[]).map((tenantId) => normalizeEmail(String(tenantId))).filter(Boolean)
+          : entry.tenantId
+            ? [normalizeEmail(entry.tenantId)]
+            : [],
+        name: String(entry.name || ''),
+        avatarUrl: entry.avatarUrl || 'https://api.dicebear.com/8.x/initials/svg?seed=' + encodeURIComponent(String(entry.email || 'user')),
+        organizationName: String(entry.organizationName || 'Acme Growth Labs'),
+        plan: (entry.plan as AuthUser['plan']) || 'Starter',
+      }));
+      if (this.users.length === 0) {
+        this.users = this.buildSeedUsers();
+      }
+    } else {
+      this.users = this.buildSeedUsers();
+    }
     this.notifications = snapshot?.notifications ? [...snapshot.notifications] : [...seedNotifications];
     this.webhookEvents = snapshot?.webhookEvents ? [...snapshot.webhookEvents] : [];
 
@@ -827,10 +962,27 @@ class DataStore {
   }
 
   getTenantUsers(tenantId: string) {
-    return [...this.users.filter((user) => user.role !== 'Super Admin' && user.tenantId === tenantId)];
+    return [
+      ...this.users
+        .filter((user) => {
+          const membership = Array.isArray(user.tenantIds) ? user.tenantIds : [];
+          return (
+            user.role !== 'Super Admin' &&
+            (user.tenantId === tenantId || membership.includes(tenantId))
+          );
+        })
+        .map((user) => this.sanitizeUser(user)),
+    ];
   }
 
-  createTenantUser(tenantId: string, userInput: Partial<Omit<UserProfile, 'id'>> & { role: 'Admin' | 'Developer' | 'User' }) {
+  createTenantUser(
+    tenantId: string,
+    userInput: Partial<Omit<UserProfile, 'id'>> & {
+      role: 'Admin' | 'Developer' | 'User';
+      password: string;
+      tenantIds?: string[];
+    }
+  ) {
     if (!tenantId || this.tenants.every((tenant) => tenant.id !== tenantId)) {
       return null;
     }
@@ -841,23 +993,125 @@ class DataStore {
     if (!email) return null;
     const role = userInput.role as Role;
     if (!role || role === 'Super Admin') return null;
-    const existing = this.users.find((user) => user.email.toLowerCase() === email && user.role === role && user.tenantId === tenantId);
+    const password = String(userInput.password || '').trim();
+    if (!password) return null;
+
+    const requestedTenantIds = Array.isArray(userInput.tenantIds) && userInput.tenantIds.length > 0
+      ? Array.from(new Set(userInput.tenantIds.map((id) => String(id || '').trim()).filter(Boolean)))
+      : [tenantId];
+    const hasInvalidTenant = requestedTenantIds.some(
+      (id) => this.tenants.every((tenant) => tenant.id !== id)
+    );
+    if (hasInvalidTenant) return null;
+
+    const existing = this.users.find(
+      (user) =>
+        user.email.toLowerCase() === email &&
+        user.role === role &&
+        requestedTenantIds.some((id) => user.tenantId === id || (Array.isArray(user.tenantIds) && user.tenantIds.includes(id)))
+    );
     if (existing) return null;
 
-    const user: AuthUser = {
+    const user: InternalAuthUser = {
       id: randomId('usr'),
       name: userInput.name || `${role} User`,
       email,
       role,
       tenantId,
+      tenantIds: requestedTenantIds,
       avatarUrl:
         'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
       organizationName: tenant.name,
       plan: role === 'Admin' || role === 'Developer' ? 'Growth Plan' : 'Starter',
+      password,
     };
     this.users.push(user);
     this.persist();
-    return user;
+    return this.sanitizeUser(user);
+  }
+
+  createTenantUsers(
+    tenantIds: string[],
+    userInput: Partial<Omit<UserProfile, 'id'>> & {
+      role: 'Admin' | 'Developer' | 'User';
+      password: string;
+      tenantIds?: string[];
+    }
+  ) {
+    const normalizedTenantIds = tenantIds.map((id) => String(id || '').trim()).filter(Boolean);
+    const validTenantIds = normalizedTenantIds.filter((id) => this.tenants.some((tenant) => tenant.id === id));
+    if (!validTenantIds.length) return [];
+
+    const baseTenantId = validTenantIds[0];
+    const user = this.createTenantUser(baseTenantId, {
+      ...userInput,
+      tenantIds: validTenantIds,
+    });
+    if (!user || !user.id) return [];
+
+    const mergedUser = this.users.find((entry) => entry.id === user.id);
+    if (!mergedUser) return [];
+    mergedUser.tenantIds = validTenantIds;
+    mergedUser.tenantId = baseTenantId;
+    this.persist();
+    return [this.sanitizeUser(mergedUser)];
+  }
+
+  updateTenantUser(tenantId: string, userId: string, userInput: Partial<Omit<UserProfile, 'id'>> & { tenantIds?: string[]; password?: string; role?: 'Admin' | 'Developer' | 'User' }) {
+    const tenant = this.getTenantById(tenantId);
+    if (!tenant) return null;
+
+    const target = this.users.find(
+      (user) =>
+        user.id === userId &&
+        (user.tenantId === tenantId || (Array.isArray(user.tenantIds) && user.tenantIds.includes(tenantId)))
+    );
+    if (!target) return null;
+
+    if (Array.isArray(userInput.tenantIds) && userInput.tenantIds.length > 0) {
+      const normalizedTenantIds = userInput.tenantIds
+        .map((item) => String(item || '').trim())
+        .filter((item) => this.tenants.some((t) => t.id === item));
+      target.tenantIds = normalizedTenantIds;
+      if (normalizedTenantIds.length > 0) target.tenantId = normalizedTenantIds[0];
+    }
+
+    if (userInput.name) target.name = String(userInput.name);
+    if (userInput.email) target.email = normalizeEmail(userInput.email);
+    if (userInput.organizationName) target.organizationName = String(userInput.organizationName);
+    if (userInput.role && userInput.role !== 'Super Admin') target.role = userInput.role;
+    if (userInput.plan) target.plan = userInput.plan;
+    if (userInput.avatarUrl) target.avatarUrl = String(userInput.avatarUrl);
+    if (userInput.password) target.password = String(userInput.password);
+
+    this.persist();
+    return this.sanitizeUser(target);
+  }
+
+  deleteTenantUser(userId: string, tenantId: string) {
+    const target = this.users.find(
+      (user) =>
+        user.id === userId &&
+        (user.tenantId === tenantId || (Array.isArray(user.tenantIds) && user.tenantIds.includes(tenantId)))
+    );
+    if (!target) return false;
+
+    const nextTenantIds = Array.isArray(target.tenantIds)
+      ? target.tenantIds.filter((id) => id !== tenantId)
+      : [];
+    if (nextTenantIds.length === 0) {
+      this.users = this.users.filter((user) => user.id !== userId);
+    } else {
+      target.tenantIds = nextTenantIds;
+      target.tenantId = nextTenantIds[0];
+    }
+    this.persist();
+    return true;
+  }
+
+  private sanitizeUser(user: InternalAuthUser) {
+    const { password: _password, ...publicUser } = user;
+    return publicUser;
   }
 
   markAllNotificationsRead() {
@@ -921,28 +1175,23 @@ class DataStore {
     return 'Anonymous Visitor';
   }
 
-  authenticate(credentials: { email: string; role: Role; tenantId?: string; password: string; name?: string }) {
-    const role: Role = credentials.role || 'User';
-    const tenantId = credentials?.tenantId;
-    const requestedEmail = (credentials.email || `${role.toLowerCase().replace(/ /g, '-')}-user@formflow.io`).toLowerCase();
-    const seeded = this.users.find(
-      (user) =>
-        user.email.toLowerCase() === requestedEmail &&
-        user.role === role &&
-        (role === 'Super Admin' || !tenantId || user.tenantId === tenantId)
-    );
-    const user: AuthUser = seeded ?? {
-      id: randomId('usr'),
-      name: credentials.name || `${role} User`,
-      email: requestedEmail,
-      role,
-      tenantId: role === 'Super Admin' ? undefined : tenantId,
-      avatarUrl: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200`,
-      organizationName: role === 'Super Admin' ? 'Summit FormFlow Holdings' : 'Acme Growth Labs',
-      plan: role === 'Super Admin' ? 'Enterprise' : role === 'Admin' ? 'Growth Plan' : role === 'Developer' ? 'Growth Plan' : 'Starter',
-    };
+  authenticate(credentials: { email: string; password: string }) {
+    const requestedEmail = normalizeEmail(credentials.email);
+    const requestedPassword = String(credentials.password || '').trim();
+    if (!requestedEmail || !requestedPassword) return null;
+
+    const user = this.users.find((entry) => {
+      const tenantMatch =
+        entry.role === 'Super Admin' ||
+        Boolean(entry.tenantId) ||
+        (Array.isArray(entry.tenantIds) && entry.tenantIds.length > 0);
+      return entry.email.toLowerCase() === requestedEmail && entry.password === requestedPassword && tenantMatch;
+    });
+
+    if (!user) return null;
+
     const token = generateAuthToken(user);
-    return { user, token };
+    return { user: this.sanitizeUser(user), token };
   }
 }
 
@@ -993,26 +1242,20 @@ app.post(`${API_PREFIX}/auth/login`, (req, res) => {
   const body = req.body || {};
   const email = String(body.email || '').trim();
   const password = String(body.password || '');
-  const role = String(body.role || 'User') as Role;
-  const tenantId = String(body.tenantId || '').trim();
-  const name = String(body.name || '').trim();
   if (!email) {
     fail(res, 'email is required');
     return;
   }
-  if (!APP_ROLES.includes(role)) {
-    fail(res, 'Invalid role');
-    return;
-  }
-  if (role !== 'Super Admin' && !tenantId) {
-    fail(res, 'tenantId is required for tenant roles');
-    return;
-  }
   if (!password) {
-    fail(res, 'password is required in demo implementation');
+    fail(res, 'password is required');
     return;
   }
-  const { user, token } = store.authenticate({ email, role, tenantId: tenantId || undefined, password, name });
+  const result = store.authenticate({ email, password });
+  if (!result) {
+    fail(res, 'Invalid credentials', 401);
+    return;
+  }
+  const { user, token } = result;
   ok(res, { token, user, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
 });
 
@@ -1080,9 +1323,9 @@ app.post(`${API_PREFIX}/tenants/:tenantId/users`, requireAuth, requireRole(['Sup
     name: String(body.name || '').trim(),
     email: String(body.email || '').trim(),
     role,
+    password: String(body.password || '').trim(),
     avatarUrl: body.avatarUrl,
     organizationName: body.organizationName,
-    plan: body.plan,
   });
 
   if (!user) {
@@ -1091,6 +1334,77 @@ app.post(`${API_PREFIX}/tenants/:tenantId/users`, requireAuth, requireRole(['Sup
   }
 
   ok(res, user, 201);
+});
+
+app.post(`${API_PREFIX}/tenant-users`, requireAuth, requireRole(['Super Admin']), (req, res) => {
+  const body = req.body || {};
+  const tenantIds = Array.isArray(body.tenantIds)
+    ? body.tenantIds.map((tenantId: string) => String(tenantId || '').trim()).filter(Boolean)
+    : [];
+  const role = String(body.role || '') as 'Admin' | 'Developer' | 'User';
+  if (!tenantIds.length) {
+    fail(res, 'tenantIds is required and must include at least one account', 400);
+    return;
+  }
+  if (!['Admin', 'Developer', 'User'].includes(role)) {
+    fail(res, 'Role must be Admin, Developer, or User', 400);
+    return;
+  }
+
+  const created = store.createTenantUsers(tenantIds, {
+    name: String(body.name || '').trim(),
+    email: String(body.email || '').trim(),
+    role,
+    password: String(body.password || '').trim(),
+    avatarUrl: body.avatarUrl,
+    organizationName: body.organizationName,
+    tenantIds,
+  });
+
+  if (!created.length) {
+    fail(res, 'Unable to create tenant user. Check payload and tenant status.', 400);
+    return;
+  }
+
+  ok(res, created, 201);
+});
+
+app.patch(`${API_PREFIX}/tenants/:tenantId/users/:userId`, requireAuth, requireRole(['Super Admin']), (req, res) => {
+  const body = req.body || {};
+  const role = String(body.role || '') as 'Admin' | 'Developer' | 'User' | '';
+  if (role && !['Admin', 'Developer', 'User'].includes(role)) {
+    fail(res, 'Role must be Admin, Developer, or User', 400);
+    return;
+  }
+
+  const user = store.updateTenantUser(req.params.tenantId, req.params.userId, {
+    name: String(body.name || '').trim(),
+    email: String(body.email || '').trim(),
+    role: role || undefined,
+    avatarUrl: body.avatarUrl,
+    organizationName: body.organizationName,
+    tenantIds: Array.isArray(body.tenantIds)
+      ? body.tenantIds.map((tenantId: string) => String(tenantId || '').trim()).filter(Boolean)
+      : undefined,
+    password: String(body.password || '').trim(),
+  });
+
+  if (!user) {
+    fail(res, 'Unable to update tenant user', 404);
+    return;
+  }
+
+  ok(res, user);
+});
+
+app.delete(`${API_PREFIX}/tenants/:tenantId/users/:userId`, requireAuth, requireRole(['Super Admin']), (req, res) => {
+  const removed = store.deleteTenantUser(req.params.userId, req.params.tenantId);
+  if (!removed) {
+    fail(res, 'User not found', 404);
+    return;
+  }
+
+  ok(res, { success: true });
 });
 
 app.get(`${API_PREFIX}/dashboard/metrics`, requireAuth, (req, res) => {

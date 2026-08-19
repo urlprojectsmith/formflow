@@ -7,21 +7,24 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const onSubmit = (event: React.FormEvent) => {
+  const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const success = login({
+    setIsSubmitting(true);
+    setError('');
+    const success = await login({
       email,
       password,
     });
-
     if (!success) {
       setError('Please enter valid email and password.');
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -53,7 +56,10 @@ export const LoginPage: React.FC = () => {
             />
           </div>
 
-          <button className="w-full mt-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs">
+          <button
+            className="w-full mt-2 px-4 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs disabled:opacity-50"
+            disabled={isSubmitting}
+          >
             Sign In
           </button>
         </form>
@@ -61,7 +67,7 @@ export const LoginPage: React.FC = () => {
         {error && <p className="text-xs mt-4 text-red-600 text-center">{error}</p>}
 
         <p className="text-[11px] mt-4 text-slate-500 text-center">
-          Role is inferred from your email. Use a dedicated account email for role-based access.
+          Role and tenant are resolved from your authenticated account credentials.
         </p>
       </div>
     </div>
