@@ -323,6 +323,8 @@ export const IntegrationsPage: React.FC = () => {
         return CreditCard;
       case 'Mail':
         return Mail;
+      case 'Building2':
+        return Building2;
       default:
         return Layers;
     }

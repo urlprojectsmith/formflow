@@ -210,7 +210,9 @@ class DataStore {
     this.tenants = snapshot?.tenants ? [...snapshot.tenants] : [...seedTenants];
     this.forms = snapshot?.forms ? [...snapshot.forms] : [...seedForms];
     this.submissions = snapshot?.submissions ? [...snapshot.submissions] : [...seedSubmissions];
-    this.integrations = snapshot?.integrations ? [...snapshot.integrations] : [...seedIntegrations];
+    this.integrations = Array.isArray(snapshot?.integrations) && snapshot.integrations.length > 0
+      ? [...snapshot.integrations]
+      : [...seedIntegrations];
     this.domains = snapshot?.domains ? [...snapshot.domains] : [...seedDomains];
     this.users = snapshot?.users ? [...(snapshot.users as AuthUser[])] : [{ ...initialUserProfile, role: 'Admin', plan: 'Growth Plan' }, ...initialTenantUsers];
     this.notifications = snapshot?.notifications ? [...snapshot.notifications] : [...seedNotifications];

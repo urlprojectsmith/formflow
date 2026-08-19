@@ -81,7 +81,9 @@ class FormFlowDataStore {
       const data = JSON.parse(raw) as LocalStoreSnapshot;
       if (Array.isArray(data.forms)) this.forms = [...data.forms];
       if (Array.isArray(data.submissions)) this.submissions = [...data.submissions];
-      if (Array.isArray(data.integrations)) this.integrations = [...data.integrations];
+      if (Array.isArray(data.integrations) && data.integrations.length > 0) {
+        this.integrations = [...data.integrations];
+      }
       if (Array.isArray(data.domains)) this.domains = [...data.domains];
       if (Array.isArray(data.notifications)) this.notifications = [...data.notifications];
       if (data.user) this.user = data.user;
