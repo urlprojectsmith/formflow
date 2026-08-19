@@ -133,6 +133,8 @@ const DB_PATH = process.env.DB_PATH || path.resolve(process.cwd(), 'data', 'form
 const DB_BACKUP_DIR = process.env.DB_BACKUP_DIR || path.resolve(process.cwd(), 'data', 'backups');
 const API_PREFIX = '/api';
 const DEFAULT_TENANT_ID = 'tenant_acme';
+const AUTH_TOKEN_COOKIE_NAME = 'formflow_auth_token';
+const AUTH_TOKEN_MAX_AGE_SECONDS = 24 * 60 * 60;
 
 const app = express();
 
@@ -143,12 +145,17 @@ app.use(
     },
   })
 );
-app.use((_req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-signature');
+app.use((req, res, next) => {
+  const requestOrigin = req.headers.origin;
+  const allowOrigin = CORS_ORIGIN === '*' && requestOrigin ? requestOrigin : CORS_ORIGIN;
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, x-signature, x-formflow-token, x-access-token, Cookie'
+  );
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  if (_req.method === 'OPTIONS') {
+  if (req.method === 'OPTIONS') {
     res.sendStatus(204);
     return;
   }
@@ -196,6 +203,110 @@ function generateAuthToken(user: AuthUser) {
   return Buffer.from(raw).toString('base64url');
 }
 
+function parseAuthTokenValue(token: string | undefined | null): AuthUser | null {
+  if (!token) return null;
+  const normalized = token.replace(/^Bearer\s+/i, '').trim();
+  if (!normalized) return null;
+  try {
+    let decoded = '';
+    try {
+      decoded = Buffer.from(normalized, 'base64url').toString('utf8');
+    } catch {
+      decoded = Buffer.from(normalized, 'base64').toString('utf8');
+    }
+    const payload = JSON.parse(decoded) as Partial<AuthUser> & {
+      id?: string;
+      email?: string;
+      role?: string;
+      organizationName?: string;
+      tenantId?: string;
+    };
+    const role = String(payload.role || '').trim();
+    if (!payload || !payload.email || !role) return null;
+    return {
+      id: payload.id || randomId('usr'),
+      name: payload.email.split('@')[0] || 'User',
+      email: payload.email,
+      role: role as Role,
+      tenantId: payload.tenantId,
+      avatarUrl: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(payload.email)}`,
+      organizationName: payload.organizationName || 'Acme Growth Labs',
+      plan: 'Growth Plan',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function readAuthTokenFromRequest(req: express.Request) {
+  const headerAuth = req.headers.authorization;
+  if (headerAuth && typeof headerAuth === 'string') {
+    const tokenFromHeader = headerAuth.replace(/^Bearer\s+/i, '').trim();
+    if (tokenFromHeader) {
+      return tokenFromHeader;
+    }
+  }
+  if (Array.isArray(headerAuth) && headerAuth[0]) {
+    const tokenFromArray = String(headerAuth[0]).replace(/^Bearer\s+/i, '').trim();
+    if (tokenFromArray) {
+      return tokenFromArray;
+    }
+  }
+
+  const accessTokenHeader = req.headers['x-access-token'];
+  if (typeof accessTokenHeader === 'string' && accessTokenHeader.trim()) {
+    return accessTokenHeader.trim();
+  }
+  if (Array.isArray(accessTokenHeader) && accessTokenHeader[0]) {
+    const tokenFromArray = String(accessTokenHeader[0]).trim();
+    if (tokenFromArray) {
+      return tokenFromArray;
+    }
+  }
+
+  const customHeader = req.headers['x-formflow-token'];
+  if (typeof customHeader === 'string' && customHeader.trim()) {
+    return customHeader.trim();
+  }
+  if (Array.isArray(customHeader) && customHeader[0]) {
+    const tokenFromArray = String(customHeader[0]).trim();
+    if (tokenFromArray) {
+      return tokenFromArray;
+    }
+  }
+
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+  const cookies = cookieHeader
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  for (const cookie of cookies) {
+    const idx = cookie.indexOf('=');
+    if (idx < 0) continue;
+    const key = cookie.substring(0, idx).trim();
+    if (key !== AUTH_TOKEN_COOKIE_NAME) continue;
+    return decodeURIComponent(cookie.substring(idx + 1).trim());
+  }
+
+  const queryToken = req.query.token;
+  if (typeof queryToken === 'string' && queryToken.trim()) {
+    return queryToken.trim();
+  }
+  if (Array.isArray(queryToken) && queryToken[0]) {
+    return String(queryToken[0]).trim();
+  }
+  return null;
+}
+
+function setAuthCookie(res: express.Response, token: string) {
+  const secureFlag = NODE_ENV === 'production' ? '; Secure' : '';
+  res.setHeader(
+    'Set-Cookie',
+    `${AUTH_TOKEN_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${AUTH_TOKEN_MAX_AGE_SECONDS};${secureFlag}`
+  );
+}
+
 function handleAuthLogin(req: express.Request, res: express.Response) {
   const body = req.body || {};
   const email = String(body.email || '').trim();
@@ -215,35 +326,8 @@ function handleAuthLogin(req: express.Request, res: express.Response) {
     return;
   }
   const { user, token } = result;
+  setAuthCookie(res, token);
   ok(res, { token, user, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
-}
-
-function parseAuthToken(header: string | undefined): AuthUser | null {
-  if (!header) return null;
-  const token = header.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(Buffer.from(token, 'base64url').toString('utf8')) as Partial<AuthUser> & {
-      id?: string;
-      email?: string;
-      role?: string;
-      organizationName?: string;
-      tenantId?: string;
-    };
-    if (!payload || !payload.email || !payload.role) return null;
-    return {
-      id: payload.id || randomId('usr'),
-      name: payload.email.split('@')[0] || 'User',
-      email: payload.email,
-      role: payload.role as Role,
-      tenantId: payload.tenantId,
-      avatarUrl: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(payload.email)}`,
-      organizationName: payload.organizationName || 'Acme Growth Labs',
-      plan: 'Growth Plan',
-    };
-  } catch {
-    return null;
-  }
 }
 
 class DataStore {
@@ -1344,7 +1428,8 @@ class DataStore {
 const store = new DataStore();
 
 const requireAuth = (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
-  const authUser = parseAuthToken(req.headers.authorization);
+  const token = readAuthTokenFromRequest(req);
+  const authUser = parseAuthTokenValue(token);
   if (!authUser) {
     fail(res, 'Unauthorized', 401);
     return;

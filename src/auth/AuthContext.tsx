@@ -47,13 +47,17 @@ const defaultContext: AuthContextValue = {
   canAccess: () => false,
 };
 
+const COOKIE_NAME = 'formflow_auth_token';
+
 const AuthContext = createContext<AuthContextValue>(defaultContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(() => {
     if (typeof window === 'undefined') return null;
     const stored = window.localStorage.getItem(STORAGE_KEY);
+    const token = window.localStorage.getItem(STORAGE_TOKEN_KEY);
     if (!stored) return null;
+    if (!token) return null;
     try {
       const parsed = JSON.parse(stored) as AuthUser;
       return parsed;
@@ -72,7 +76,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       password: cleanedPassword,
     });
 
-    const endpoints = Array.from(new Set(API_BASES.map((base) => `${base}/auth/login`)));
+    const authEndpoints = Array.from(
+      new Set(
+        API_BASES.flatMap((base) => {
+          const trimmedBase = String(base || '').replace(/\/+$/, '');
+          if (!trimmedBase) return [];
+          const candidates = new Set<string>();
+          candidates.add(`${trimmedBase}/auth/login`);
+          if (!trimmedBase.endsWith('/api')) {
+            candidates.add(`${trimmedBase}/api/auth/login`);
+          } else {
+            candidates.add(trimmedBase.replace(/\/api$/, '/api') + '/auth/login');
+          }
+          return Array.from(candidates);
+        })
+      )
+    );
+
+    const endpoints = authEndpoints.length ? authEndpoints : ['/api/auth/login'];
     let response: Response | null = null;
     let raw: ApiOk | ApiError | null = null;
 
@@ -81,6 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: payload,
         });
         raw = (await response.json().catch(() => null)) as ApiOk | ApiError | null;
@@ -108,9 +130,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const authData = raw as ApiOk;
     const profile = authData.data.user;
+    const token = authData.data.token || '';
     setUser(profile);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-    window.localStorage.setItem(STORAGE_TOKEN_KEY, authData.data.token || '');
+    window.localStorage.setItem(STORAGE_TOKEN_KEY, token);
+    document.cookie = `${COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Max-Age=86400; SameSite=Lax${
+      window.location.protocol === 'https:' ? '; Secure' : ''
+    }`;
     return true;
   };
 
@@ -118,6 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     window.localStorage.removeItem(STORAGE_KEY);
     window.localStorage.removeItem(STORAGE_TOKEN_KEY);
+    document.cookie = `${COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
   };
 
   const value = useMemo(
@@ -139,4 +166,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
-

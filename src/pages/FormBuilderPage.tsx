@@ -50,21 +50,21 @@ export const FormBuilderPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 space-y-3">
-        <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-        <p className="text-xs font-semibold text-slate-600">Loading Form Canvas & Schema...</p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center theme-surface-secondary space-y-3">
+        <RefreshCw className="w-8 h-8 theme-text-primary animate-spin" />
+        <p className="text-xs font-semibold theme-text-muted">Loading Form Canvas & Schema...</p>
       </div>
     );
   }
 
   if (!form) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 space-y-4">
-        <h2 className="text-base font-bold text-slate-900">Form Not Found</h2>
-        <p className="text-xs text-slate-500">The requested form canvas definition could not be loaded.</p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center theme-surface-secondary space-y-4">
+        <h2 className="text-base font-bold theme-text-primary">Form Not Found</h2>
+        <p className="text-xs theme-text-muted">The requested form canvas definition could not be loaded.</p>
         <Link
           to="/forms"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg"
+          className="inline-flex items-center gap-2 px-4 py-2 theme-button-primary text-xs font-bold rounded-lg"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Return to Forms Directory</span>
@@ -76,7 +76,7 @@ export const FormBuilderPage: React.FC = () => {
   const selectedField = form.fields.find((f) => f.id === selectedFieldId) || null;
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-slate-100 font-sans antialiased">
+    <div className="h-screen w-screen flex flex-col overflow-hidden theme-layout-main font-sans antialiased">
       {/* Builder Top Bar */}
       <BuilderTopBar
         formId={form.id}
@@ -131,7 +131,7 @@ export const FormBuilderPage: React.FC = () => {
             onChangeRules={updateLogicRules}
           />
         ) : activeSection === 'actions' ? (
-          <div className="flex-1 overflow-y-auto bg-slate-100 p-6">
+          <div className="flex-1 overflow-y-auto theme-surface-secondary p-6">
             <FormActionEditor
               fields={form.fields}
               actionsPipeline={form.actionsPipeline || []}

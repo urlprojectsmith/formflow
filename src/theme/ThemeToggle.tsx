@@ -25,11 +25,15 @@ export const ThemeToggle: React.FC = () => {
       event.preventDefault();
       setTheme(THEME_OPTIONS[THEME_OPTIONS.length - 1].value);
     }
+    if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
+      setTheme(value);
+    }
   };
 
   return (
     <div
-      role="tablist"
+      role="radiogroup"
       aria-label="Theme selector"
       className="theme-toggle"
     >
@@ -39,10 +43,10 @@ export const ThemeToggle: React.FC = () => {
         return (
           <button
             key={option.value}
-            role="tab"
+            role="radio"
             type="button"
             aria-label={`Switch to ${option.label} theme`}
-            aria-selected={selected}
+            aria-checked={selected}
             className={`theme-toggle-option ${selected ? 'is-active' : ''}`}
             onClick={() => setTheme(option.value)}
             onKeyDown={(event) => handleKeyDown(event, option.value, index)}

@@ -99,18 +99,18 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
   };
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between gap-3 shrink-0 z-20">
+    <header className="h-14 theme-topbar px-4 flex items-center justify-between gap-3 shrink-0 z-20">
       {/* Left: Back & Editable Form Title */}
       <div className="flex items-center gap-3">
         <Link
           to="/forms"
-          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+          className="p-1.5 theme-icon-button transition-colors"
           title="Back to Forms Directory"
         >
           <ArrowLeft className="w-4 h-4" />
         </Link>
 
-        <div className="h-4 w-px bg-slate-200" />
+        <div className="h-4 w-px border-r border-theme" />
 
         <div className="flex items-center gap-2">
           {isEditingName ? (
@@ -123,12 +123,12 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleNameBlur();
               }}
-              className="px-2 py-1 text-xs font-bold text-slate-900 bg-slate-50 border border-blue-500 rounded focus:outline-none"
+              className="px-2 py-1 text-xs font-bold theme-input rounded focus:outline-none"
             />
           ) : (
             <button
               onClick={() => setIsEditingName(true)}
-              className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:bg-slate-50 px-2 py-1 rounded transition-colors text-left"
+              className="text-xs font-bold theme-text-primary hover:theme-text-primary px-2 py-1 rounded transition-colors text-left theme-chip"
               title="Click to edit form title"
             >
               {formName || 'Untitled Form'}
@@ -136,29 +136,29 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
           )}
 
           {/* Save Status Badge */}
-          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-600">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-md theme-chip">
             {saveStatus === 'saving' && (
               <>
-                <RefreshCw className="w-3 h-3 text-blue-600 animate-spin" />
+                <RefreshCw className="w-3 h-3 theme-text-primary animate-spin" />
                 <span>Saving...</span>
               </>
             )}
             {saveStatus === 'saved' && (
               <>
-                <Check className="w-3 h-3 text-emerald-600" />
-                <span className="text-slate-500">Saved</span>
+                <Check className="w-3 h-3 text-theme-success" />
+                <span className="theme-text-muted">Saved</span>
               </>
             )}
             {saveStatus === 'unsaved' && (
               <>
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                <span className="text-amber-700">Unsaved changes</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-theme-warning" />
+                <span className="theme-text-warning">Unsaved changes</span>
               </>
             )}
             {saveStatus === 'error' && (
               <>
-                <AlertCircle className="w-3 h-3 text-rose-500" />
-                <span className="text-rose-600">Save failed</span>
+                <AlertCircle className="w-3 h-3 text-theme-danger" />
+                <span className="text-theme-danger">Save failed</span>
               </>
             )}
           </div>
@@ -169,13 +169,13 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
       <div className="flex items-center gap-3">
         {/* Section Navigation Tabs (Canvas vs Code) */}
         {onSelectSection && (
-          <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+          <div className="flex items-center bg-theme-surface-hover p-1 rounded-lg border border-theme">
             <button
               onClick={() => onSelectSection('visual')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition-all ${
                 activeSection === 'visual'
-                  ? 'bg-white text-blue-600 shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'theme-button-primary text-white shadow-2xs font-extrabold'
+                  : 'theme-text-secondary theme-hover'
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -185,8 +185,8 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
               onClick={() => onSelectSection('logic')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition-all ${
                 activeSection === 'logic'
-                  ? 'bg-white text-blue-600 shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'theme-button-primary text-white shadow-2xs font-extrabold'
+                  : 'theme-text-secondary theme-hover'
               }`}
             >
               <GitFork className="w-3.5 h-3.5" />
@@ -196,19 +196,19 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
               onClick={() => onSelectSection('actions')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition-all ${
                 activeSection === 'actions'
-                  ? 'bg-white text-blue-600 shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'theme-button-primary text-white shadow-2xs font-extrabold'
+                  : 'theme-text-secondary theme-hover'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+              <Zap className="w-3.5 h-3.5 theme-text-warning" />
               <span>Actions</span>
             </button>
             <button
               onClick={() => onSelectSection('code')}
               className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition-all ${
                 activeSection === 'code'
-                  ? 'bg-white text-blue-600 shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'theme-button-primary text-white shadow-2xs font-extrabold'
+                  : 'theme-text-secondary theme-hover'
               }`}
             >
               <Code2 className="w-3.5 h-3.5" />
@@ -218,11 +218,11 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
         )}
 
         {/* Undo / Redo */}
-        <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <div className="flex items-center bg-theme-surface-hover p-0.5 rounded-lg border border-theme">
           <button
             onClick={onUndo}
             disabled={!canUndo}
-            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded disabled:opacity-40 transition-all"
+            className="p-1.5 theme-text-secondary theme-hover hover:bg-theme-surface rounded disabled:opacity-40 transition-all"
             title="Undo (Ctrl+Z)"
           >
             <Undo2 className="w-3.5 h-3.5" />
@@ -230,23 +230,23 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
           <button
             onClick={onRedo}
             disabled={!canRedo}
-            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded disabled:opacity-40 transition-all"
+            className="p-1.5 theme-text-secondary theme-hover hover:bg-theme-surface rounded disabled:opacity-40 transition-all"
             title="Redo (Ctrl+Y)"
           >
             <Redo2 className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="h-4 w-px bg-slate-200" />
+        <div className="h-4 w-px border-r border-theme" />
 
         {/* Device Viewport Selector */}
-        <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <div className="flex items-center bg-theme-surface-hover p-0.5 rounded-lg border border-theme">
           <button
             onClick={() => onSetViewport('desktop')}
             className={`p-1.5 rounded transition-all ${
               viewport === 'desktop'
-                ? 'bg-white text-blue-600 shadow-2xs font-bold'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'theme-button-primary text-white shadow-2xs font-bold'
+                : 'theme-text-secondary theme-hover'
             }`}
             title="Desktop Viewport"
           >
@@ -256,8 +256,8 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
             onClick={() => onSetViewport('tablet')}
             className={`p-1.5 rounded transition-all ${
               viewport === 'tablet'
-                ? 'bg-white text-blue-600 shadow-2xs font-bold'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'theme-button-primary text-white shadow-2xs font-bold'
+                : 'theme-text-secondary theme-hover'
             }`}
             title="Tablet Viewport (768px)"
           >
@@ -267,8 +267,8 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
             onClick={() => onSetViewport('mobile')}
             className={`p-1.5 rounded transition-all ${
               viewport === 'mobile'
-                ? 'bg-white text-blue-600 shadow-2xs font-bold'
-                : 'text-slate-500 hover:text-slate-900'
+                ? 'theme-button-primary text-white shadow-2xs font-bold'
+                : 'theme-text-secondary theme-hover'
             }`}
             title="Mobile Viewport (375px)"
           >
@@ -280,16 +280,16 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
       {/* Right: Version Badges, Preview, History & Save/Publish */}
       <div className="flex items-center gap-2">
         {/* Version Badge */}
-        <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-700">
-          <span className="font-semibold text-slate-900">v{version}</span>
-          <span className="text-slate-400">•</span>
-          <span className="text-slate-500">Draft</span>
+        <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-theme-surface-hover border border-theme text-[11px] font-medium theme-text-secondary">
+          <span className="font-semibold theme-text-primary">v{version}</span>
+          <span className="theme-text-muted">•</span>
+          <span className="theme-text-muted">Draft</span>
           {publishedVersion ? (
-            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-100 text-emerald-800 font-bold">
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] theme-badge-success font-bold">
               Live: v{publishedVersion}
             </span>
           ) : (
-            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-medium">
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] theme-chip theme-text-warning font-medium">
               Not Published
             </span>
           )}
@@ -299,10 +299,10 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
         {formId && (
           <Link
             to={`/forms/${formId}/versions`}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-theme hover:bg-theme-surface-hover text-xs font-semibold rounded-lg transition-colors theme-text-secondary"
             title="View Form Version History"
           >
-            <History className="w-3.5 h-3.5 text-slate-500" />
+            <History className="w-3.5 h-3.5 theme-text-secondary" />
             <span className="hidden sm:inline">Versions</span>
           </Link>
         )}
@@ -310,7 +310,7 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
         {formId && (
           <button
             onClick={onOpenEmbed}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg shadow-2xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 theme-button-primary text-xs font-bold rounded-lg shadow-2xs transition-colors"
             title="Embed or Share Form"
           >
             <Share2 className="w-3.5 h-3.5" />
@@ -323,7 +323,7 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
             href={`/f/${formId}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 border border-theme text-xs font-semibold rounded-lg transition-colors theme-text-secondary hover:bg-theme-surface-hover"
             title="Open Public Form Page in new tab"
           >
             <ExternalLink className="w-3.5 h-3.5" />
@@ -335,8 +335,8 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
           onClick={onTogglePreview}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
             isPreview
-              ? 'bg-blue-50 text-blue-700 border-blue-200'
-              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              ? 'theme-button-primary'
+              : 'border border-theme bg-theme-surface-hover theme-text-secondary'
           }`}
         >
           {isPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -345,7 +345,7 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
 
         <button
           onClick={onSaveNow}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 theme-button-secondary text-xs font-semibold rounded-lg transition-colors"
           title="Save draft version"
         >
           <Save className="w-3.5 h-3.5" />
@@ -354,7 +354,7 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
 
         <button
           onClick={() => setIsPublishModalOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-2xs transition-colors"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 theme-button-primary text-xs font-bold rounded-lg shadow-2xs transition-colors"
           title="Publish immutable version"
         >
           <Send className="w-3.5 h-3.5" />
@@ -364,19 +364,19 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
 
       {/* Success Toast Banner */}
       {showSuccessToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-800 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+        <div className="fixed bottom-6 right-6 z-50 theme-surface px-4 py-3 rounded-xl shadow-xl border border-theme flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="w-8 h-8 rounded-full bg-theme-surface-hover text-theme-success flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-white">Published Successfully</div>
-            <div className="text-[11px] text-slate-300">
+            <div className="text-xs font-bold theme-text-primary">Published Successfully</div>
+            <div className="text-[11px] theme-text-muted">
               Version {version} is now immutable and live on the public URL.
             </div>
           </div>
           <button
             onClick={() => setShowSuccessToast(false)}
-            className="text-slate-400 hover:text-white p-1 ml-2"
+            className="theme-text-muted hover:theme-text-primary p-1 ml-2"
           >
             <X className="w-4 h-4" />
           </button>
@@ -385,28 +385,28 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
 
       {/* Publish Confirmation Modal */}
       {isPublishModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 theme-modal-overlay flex items-center justify-center p-4">
+          <div className="theme-modal-panel rounded-2xl max-w-md w-full p-6 shadow-2xl border border-theme animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full theme-button-primary flex items-center justify-center shrink-0">
                 <Send className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Publish Form Version {version}?</h3>
-                <p className="text-xs text-slate-500">Create immutable snapshot for public runtime</p>
+                <h3 className="text-base font-bold theme-text-primary">Publish Form Version {version}?</h3>
+                <p className="text-xs theme-text-muted">Create immutable snapshot for public runtime</p>
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600 space-y-2 mb-6">
+            <div className="theme-surface border border-theme rounded-xl p-3.5 text-xs theme-text-secondary space-y-2 mb-6">
               <p>
-                Publishing will create an <strong className="text-slate-900 font-semibold">immutable Version {version}</strong> and instantly update the live public runtime at:
+                Publishing will create an <strong className="theme-text-primary font-semibold">immutable Version {version}</strong> and instantly update the live public runtime at:
               </p>
               {formId && (
-                <div className="font-mono text-[11px] text-blue-700 bg-blue-50 p-2 rounded border border-blue-100 truncate">
+                <div className="font-mono text-[11px] theme-text-secondary theme-surface-hover p-2 rounded border border-theme truncate">
                   /f/{formId}
                 </div>
               )}
-              <p className="text-slate-500 text-[11px]">
+              <p className="theme-text-muted text-[11px]">
                 Draft edits will not affect public users until a new version is published.
               </p>
             </div>
@@ -414,14 +414,14 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
             <div className="flex items-center justify-end gap-2.5">
               <button
                 onClick={() => setIsPublishModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-xs font-semibold theme-text-secondary hover:theme-text-primary hover:bg-theme-surface-hover rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmPublish}
-                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
-              >
+                className="px-4 py-2 text-xs font-bold text-white theme-button-primary rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
+                >
                 <Check className="w-3.5 h-3.5" />
                 <span>Confirm & Publish</span>
               </button>
@@ -432,3 +432,4 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
     </header>
   );
 };
+

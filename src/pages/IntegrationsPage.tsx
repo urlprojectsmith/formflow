@@ -40,6 +40,7 @@ export const IntegrationsPage: React.FC = () => {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [error, setError] = useState<string | null>(null);
 
   // Modal states for n8n & GHL
   const [activeModal, setActiveModal] = useState<'n8n' | 'ghl' | null>(null);
@@ -84,28 +85,40 @@ export const IntegrationsPage: React.FC = () => {
 
   const fetchIntegrations = async () => {
     setLoading(true);
-    const [data, n8nData, ghlData] = await Promise.all([
-      apiService.getIntegrations(),
-      integrationService.getN8nMetadata(),
-      integrationService.getGhlMetadata(),
-    ]);
+    setError(null);
+    try {
+      const [data, n8nData, ghlData] = await Promise.all([
+        apiService.getIntegrations(),
+        integrationService.getN8nMetadata(),
+        integrationService.getGhlMetadata(),
+      ]);
 
-    setIntegrations(data);
-    setN8nMeta(n8nData);
-    setGhlMeta(ghlData);
-    if (ghlData?.locationId) {
-      setGhlLocationInput(ghlData.locationId);
+      setIntegrations(Array.isArray(data) ? data : []);
+      setN8nMeta(n8nData);
+      setGhlMeta(ghlData);
+      if (ghlData?.locationId) {
+        setGhlLocationInput(ghlData.locationId);
+      }
+      if (n8nData) {
+        setN8nDraft({
+          webhookUrl: n8nData.webhookUrl,
+          method: n8nData.method,
+          authType: n8nData.authType,
+          payloadMode: n8nData.payloadMode,
+          customTemplate: n8nData.customTemplate || '',
+        });
+      }
+      if (!n8nData) {
+        setN8nDraft((prev) => ({
+          ...prev,
+          payloadMode: prev.payloadMode || 'entire_submission',
+        }));
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load integrations. Please retry.');
+    } finally {
+      setLoading(false);
     }
-    if (n8nData) {
-      setN8nDraft({
-        webhookUrl: n8nData.webhookUrl,
-        method: n8nData.method,
-        authType: n8nData.authType,
-        payloadMode: n8nData.payloadMode,
-        customTemplate: n8nData.customTemplate || '',
-      });
-    }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -113,27 +126,37 @@ export const IntegrationsPage: React.FC = () => {
   }, []);
 
   const handleToggle = async (id: string, currentStatus: IntegrationStatus) => {
-    if (id === 'int_n8n') {
-      setActiveModal('n8n');
-      return;
-    }
-    if (id === 'int_ghl') {
-      setActiveModal('ghl');
-      return;
-    }
+    setError(null);
+    try {
+      if (id === 'int_n8n') {
+        setActiveModal('n8n');
+        return;
+      }
+      if (id === 'int_ghl') {
+        setActiveModal('ghl');
+        return;
+      }
 
-    const nextStatus: IntegrationStatus = currentStatus === 'connected' ? 'disconnected' : 'connected';
-    await apiService.toggleIntegrationStatus(id, nextStatus);
-    await fetchIntegrations();
+      const nextStatus: IntegrationStatus = currentStatus === 'connected' ? 'disconnected' : 'connected';
+      await apiService.toggleIntegrationStatus(id, nextStatus);
+      await fetchIntegrations();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update integration status.');
+    }
   };
 
   // --- n8n Handlers ---
   const handleSaveN8n = async () => {
-    const updated = await integrationService.saveN8nConfig(n8nDraft);
-    setN8nMeta(updated);
-    await apiService.toggleIntegrationStatus('int_n8n', 'connected');
-    await fetchIntegrations();
-    setActiveModal(null);
+    setError(null);
+    try {
+      const updated = await integrationService.saveN8nConfig(n8nDraft);
+      setN8nMeta(updated);
+      await apiService.toggleIntegrationStatus('int_n8n', 'connected');
+      await fetchIntegrations();
+      setActiveModal(null);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to save n8n configuration.');
+    }
   };
 
   const handleTestN8nConnection = async () => {
@@ -179,6 +202,7 @@ export const IntegrationsPage: React.FC = () => {
   // --- GHL Handlers ---
   const handleConnectGhl = async () => {
     setGhlActionLoading(true);
+    setError(null);
     try {
       const updated = await integrationService.connectGhl({
         locationId: ghlLocationInput,
@@ -241,12 +265,19 @@ export const IntegrationsPage: React.FC = () => {
 
   const handleDisconnectGhl = async () => {
     setGhlActionLoading(true);
-    const updated = await integrationService.disconnectGhl();
-    setGhlMeta(updated);
-    await apiService.toggleIntegrationStatus('int_ghl', 'disconnected');
-    await fetchIntegrations();
-    setGhlActionLoading(false);
-    setActiveModal(null);
+    setError(null);
+    try {
+      const updated = await integrationService.disconnectGhl();
+      setGhlMeta(updated);
+      await apiService.toggleIntegrationStatus('int_ghl', 'disconnected');
+      await fetchIntegrations();
+      setActiveModal(null);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to disconnect GoHighLevel.');
+    } finally {
+      setGhlActionLoading(false);
+      setActiveModal(null);
+    }
   };
 
   const handleTestGhlContactAction = async () => {
@@ -338,6 +369,17 @@ export const IntegrationsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            onClick={() => fetchIntegrations()}
+            className="px-2.5 py-1.5 bg-rose-100 text-rose-800 rounded-lg font-semibold"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -396,14 +438,14 @@ export const IntegrationsPage: React.FC = () => {
                       </div>
                       <div>
                         <h3 className="font-bold text-slate-900 text-sm">{item.name}</h3>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                          {item.category}
-                        </span>
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                            {item.category}
+                          </span>
                       </div>
                     </div>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${badge.className}`}>
-                      {badge.label}
-                    </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${badge.className}`}>
+                            {badge.label}
+                          </span>
                   </div>
 
                   <p className="text-xs text-slate-600 mt-3 leading-relaxed">
@@ -427,7 +469,9 @@ export const IntegrationsPage: React.FC = () => {
                     <div className="mt-3 p-2 bg-slate-50 rounded-lg border border-slate-200 text-[11px] space-y-1">
                       <div className="flex items-center justify-between font-mono text-slate-700">
                         <span>Payload Mode:</span>
-                        <span className="font-bold text-slate-900 capitalize">{n8nMeta.payloadMode.replace('_', ' ')}</span>
+                        <span className="font-bold text-slate-900 capitalize">
+                          {(n8nMeta.payloadMode || n8nDraft.payloadMode || 'entire_submission').replace('_', ' ')}
+                        </span>
                       </div>
                       <div className="text-slate-500 truncate font-mono">
                         {n8nMeta.webhookUrl}

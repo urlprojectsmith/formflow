@@ -390,19 +390,19 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
         </div>
         <h3 className="text-lg font-bold text-slate-900">Submission Received!</h3>
         <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-          {definition.settings?.successMessage ||
+          {safeDefinition.settings?.successMessage ||
             'Thank you! Your response has been recorded successfully.'}
         </p>
-        {definition.settings?.redirectUrl && (
+        {safeDefinition.settings?.redirectUrl && (
           <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg max-w-md mx-auto text-xs text-blue-900 space-y-1">
             <p className="font-semibold flex items-center justify-center gap-1">
               <span>Redirecting in {redirectCountdown !== null ? redirectCountdown : 3} seconds...</span>
             </p>
             <a
-              href={definition.settings.redirectUrl}
+              href={safeDefinition.settings.redirectUrl}
               className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1 font-mono text-[11px]"
             >
-              <span>{definition.settings.redirectUrl}</span>
+              <span>{safeDefinition.settings.redirectUrl}</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -457,7 +457,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
         </div>
       )}
       <div className="flex flex-wrap -mx-2">
-        {definition.fields.map((field) => {
+        {safeDefinition.fields.map((field) => {
           const runtime = fieldStates[field.id] || fieldStates[field.name];
           const isHidden = runtime ? runtime.hidden : !!field.hidden;
           const isDisabled = runtime ? runtime.disabled : !!field.disabled;
@@ -832,7 +832,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                       {isSubmitting
                         ? 'Submitting...'
                         : field.buttonText ||
-                          definition.settings?.submitButtonText ||
+                          safeDefinition.settings?.submitButtonText ||
                           field.label ||
                           'Submit'}
                     </span>

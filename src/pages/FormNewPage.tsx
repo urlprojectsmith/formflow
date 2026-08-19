@@ -151,18 +151,18 @@ export const FormNewPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <Link
           to="/forms"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold theme-text-muted hover:text-theme-primary transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Forms Directory
         </Link>
-        <span className="text-xs text-slate-400 font-medium">Step 1 of 2: Setup Details</span>
+        <span className="text-xs theme-text-muted font-medium">Step 1 of 2: Setup Details</span>
       </div>
 
-      <div className="bg-white p-6 md:p-8 rounded-xl border border-slate-200 shadow-2xs space-y-8">
+      <div className="theme-surface-card p-6 md:p-8 rounded-xl border-theme space-y-8">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Create New Form</h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <h2 className="text-xl font-bold theme-text-primary tracking-tight">Create New Form</h2>
+          <p className="text-xs theme-text-muted mt-1">
             Choose a starting template and configure initial form properties.
           </p>
         </div>
@@ -171,7 +171,7 @@ export const FormNewPage: React.FC = () => {
           {/* Form Properties */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <label htmlFor="formName" className="block text-xs font-bold text-slate-700">
+              <label htmlFor="formName" className="block text-xs font-bold theme-text-secondary">
                 Form Name <span className="text-rose-500">*</span>
               </label>
               <input
@@ -181,16 +181,16 @@ export const FormNewPage: React.FC = () => {
                 placeholder="e.g. Q4 Growth Partner Application"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                className="w-full px-3 py-2 text-xs font-medium theme-input rounded-lg focus:outline-none"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="formSlug" className="block text-xs font-bold text-slate-700">
+              <label htmlFor="formSlug" className="block text-xs font-bold theme-text-secondary">
                 URL Slug / Subpath
               </label>
               <div className="flex items-center">
-                <span className="px-3 py-2 text-xs text-slate-400 bg-slate-100 border border-r-0 border-slate-200 rounded-l-lg font-mono">
+                <span className="px-3 py-2 text-xs theme-text-muted theme-surface-hover border border-r-0 border-theme rounded-l-lg font-mono">
                   /s/
                 </span>
                 <input
@@ -198,13 +198,13 @@ export const FormNewPage: React.FC = () => {
                   type="text"
                   readOnly
                   value={slug || 'form-slug'}
-                  className="w-full px-3 py-2 text-xs font-mono font-medium text-slate-600 bg-slate-100 border border-slate-200 rounded-r-lg"
+                  className="w-full px-3 py-2 text-xs font-mono font-medium theme-input rounded-r-lg"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
-              <label htmlFor="description" className="block text-xs font-bold text-slate-700">
+              <label htmlFor="description" className="block text-xs font-bold theme-text-secondary">
                 Description / Purpose
               </label>
               <input
@@ -213,21 +213,21 @@ export const FormNewPage: React.FC = () => {
                 placeholder="Brief internal summary of what this form collects"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                className="w-full px-3 py-2 text-xs font-medium theme-input rounded-lg focus:outline-none"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="domain" className="block text-xs font-bold text-slate-700">
+              <label htmlFor="domain" className="block text-xs font-bold theme-text-secondary">
                 Primary Domain
               </label>
               <div className="relative">
-                <Globe className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Globe className="w-4 h-4 theme-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
                 <select
                   id="domain"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                  className="w-full pl-9 pr-3 py-2 text-xs font-medium theme-input rounded-lg focus:outline-none"
                 >
                   <option value="forms.company.com">forms.company.com (Default)</option>
                   <option value="app.leadsflow.io">app.leadsflow.io</option>
@@ -237,7 +237,7 @@ export const FormNewPage: React.FC = () => {
 
             {isSuperAdmin && (
               <div className="space-y-1.5">
-                <label htmlFor="tenantId" className="block text-xs font-bold text-slate-700">
+                <label htmlFor="tenantId" className="block text-xs font-bold theme-text-secondary">
                   Agency Account
                 </label>
                 <select
@@ -245,7 +245,7 @@ export const FormNewPage: React.FC = () => {
                   required
                   value={tenantId}
                   onChange={(event) => setTenantId(event.target.value)}
-                  className="w-full px-3 py-2 text-xs font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                  className="w-full px-3 py-2 text-xs font-medium theme-input rounded-lg focus:outline-none"
                 >
                   <option value="">
                     {isTenantLoading ? 'Loading accounts...' : 'Select an agency account'}
@@ -263,7 +263,7 @@ export const FormNewPage: React.FC = () => {
 
           {/* Template Selection */}
           <div className="space-y-3 pt-4 border-t border-slate-100">
-            <label className="block text-xs font-bold text-slate-800">
+            <label className="block text-xs font-bold theme-text-primary">
               Select Form Template
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -275,30 +275,30 @@ export const FormNewPage: React.FC = () => {
                   <div
                     key={tmpl.id}
                     onClick={() => setSelectedTemplate(tmpl.id)}
-                    className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                      isSelected
-                        ? 'border-blue-600 bg-blue-50/50 shadow-xs'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
+                  className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                    isSelected
+                      ? 'theme-button-secondary theme-button-primary !bg-[var(--surface-hover)] shadow-xs'
+                      : 'theme-surface border-theme hover:border-theme'
                     }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-theme-badge-success text-white' : 'theme-surface-hover text-theme-primary'}`}>
                           <Icon className="w-4 h-4" />
                         </div>
                         {isSelected && (
-                          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                          <div className="w-5 h-5 rounded-full bg-theme-badge-success text-white flex items-center justify-center">
                             <Check className="w-3 h-3 stroke-[3]" />
                           </div>
                         )}
                       </div>
-                      <h3 className="text-xs font-bold text-slate-900 mt-3">{tmpl.title}</h3>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-snug">{tmpl.description}</p>
+                      <h3 className="text-xs font-bold theme-text-primary mt-3">{tmpl.title}</h3>
+                      <p className="text-[11px] theme-text-muted mt-1 leading-snug">{tmpl.description}</p>
                     </div>
 
-                    <div className="mt-3 pt-2 border-t border-slate-100/80 flex items-center justify-between text-[10px] font-semibold text-slate-400">
+                    <div className="mt-3 pt-2 border-t border-theme flex items-center justify-between text-[10px] font-semibold theme-text-muted">
                       <span>{tmpl.fieldsCount} Pre-configured Fields</span>
-                      <span className="text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
+                      <span className="theme-badge-info px-1.5 py-0.2 rounded border border-theme">
                         {tmpl.recommendedFor}
                       </span>
                     </div>
@@ -309,18 +309,18 @@ export const FormNewPage: React.FC = () => {
           </div>
 
           {/* Action Footer */}
-          <div className="pt-6 border-t border-slate-200 flex items-center justify-end gap-3">
-            <Link
-              to="/forms"
-              className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting || !formName.trim()}
-              className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-2xs transition-colors"
-            >
+      <div className="pt-6 border-t border-theme flex items-center justify-end gap-3">
+        <Link
+          to="/forms"
+          className="px-4 py-2 theme-button-secondary text-xs font-semibold rounded-lg transition-colors"
+        >
+          Cancel
+        </Link>
+        <button
+          type="submit"
+          disabled={isSubmitting || !formName.trim()}
+          className="flex items-center gap-2 px-5 py-2 theme-button-primary disabled:opacity-50 text-xs font-bold rounded-lg transition-colors"
+        >
               {isSubmitting ? 'Creating...' : 'Create Form & Launch Builder'}
             </button>
           </div>

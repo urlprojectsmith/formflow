@@ -35,7 +35,7 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 mb-1.5">Email</label>
+            <label className="block text-xs font-bold uppercase tracking-wide theme-text-muted mb-1.5">Email</label>
             <input
               type="email"
               value={email}
@@ -46,7 +46,7 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wide text-slate-600 mb-1.5">Password</label>
+            <label className="block text-xs font-bold uppercase tracking-wide theme-text-muted mb-1.5">Password</label>
             <input
               type="password"
               value={password}

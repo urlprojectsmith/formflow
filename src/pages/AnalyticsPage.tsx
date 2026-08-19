@@ -33,9 +33,9 @@ export const AnalyticsPage: React.FC = () => {
     setError(null);
     try {
       const formsData = await apiService.getForms();
-      setForms(formsData);
+      setForms(Array.isArray(formsData) ? formsData : []);
     } catch (err: any) {
-      setError('Unable to load analytics metrics. Please check network connectivity.');
+      setError(err?.message || 'Unable to load analytics metrics. Please check network connectivity.');
     } finally {
       setLoading(false);
     }

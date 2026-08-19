@@ -19,12 +19,19 @@ export const DomainsPage: React.FC = () => {
   const [newDomainName, setNewDomainName] = useState<string>('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchDomains = async () => {
     setLoading(true);
-    const data = await apiService.getDomains();
-    setDomains(data);
-    setLoading(false);
+    setError(null);
+    try {
+      const data = await apiService.getDomains();
+      setDomains(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setError(err?.message || 'Unable to load domains.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -36,13 +43,22 @@ export const DomainsPage: React.FC = () => {
     if (!newDomainName.trim()) return;
 
     setIsAdding(true);
-    await apiService.addDomain(newDomainName);
-    setNewDomainName('');
-    setIsAdding(false);
-    await fetchDomains();
+    setError(null);
+    try {
+      await apiService.addDomain(newDomainName);
+      setNewDomainName('');
+      await fetchDomains();
+    } catch (err: any) {
+      setError(err?.message || 'Unable to add domain.');
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const copyToClipboard = (text: string, id: string) => {
+    if (!navigator?.clipboard) {
+      return;
+    }
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -100,12 +116,27 @@ export const DomainsPage: React.FC = () => {
           </h3>
         </div>
 
-        {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500 space-y-2">
-            <RefreshCw className="w-5 h-5 text-blue-600 animate-spin mx-auto" />
-            <p>Loading domain records...</p>
-          </div>
-        ) : (
+      {loading ? (
+        <div className="p-8 text-center text-xs text-slate-500 space-y-2">
+          <RefreshCw className="w-5 h-5 text-blue-600 animate-spin mx-auto" />
+          <p>Loading domain records...</p>
+        </div>
+      ) : error ? (
+        <div className="p-8 text-center text-xs text-rose-700 space-y-2">
+          <p>{error}</p>
+          <button
+            onClick={() => fetchDomains()}
+            className="px-3 py-1.5 bg-rose-100 text-rose-800 rounded-lg font-semibold"
+          >
+            Retry
+          </button>
+        </div>
+      ) : domains.length === 0 ? (
+        <div className="p-8 text-center text-xs text-slate-500 space-y-1">
+          <p>No custom domains configured yet.</p>
+          <p className="text-[11px] text-slate-400">Add one using the form above to start using your branded domains.</p>
+        </div>
+      ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>

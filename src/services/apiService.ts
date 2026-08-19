@@ -45,6 +45,23 @@ type QueryValue = string | number | undefined;
 const getCachedToken = () =>
   typeof window === 'undefined' ? '' : window.localStorage.getItem(STORAGE_TOKEN_KEY) || '';
 
+function getCookieToken() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return '';
+  const tokenCookie = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${STORAGE_TOKEN_KEY}=`));
+  if (!tokenCookie) return '';
+  const value = tokenCookie.substring(tokenCookie.indexOf('=') + 1);
+  return decodeURIComponent(value || '').trim();
+}
+
+const getAuthToken = () => {
+  const stored = getCachedToken();
+  if (stored) return stored;
+  return getCookieToken();
+};
+
 class FormFlowDataStore {
   private actionExecutionStatuses = new Map<string, ActionExecutionStatus[]>();
 
@@ -62,7 +79,7 @@ class FormFlowDataStore {
   }
 
   private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const token = getCachedToken();
+    const token = getAuthToken();
     const { query = {}, ...fetchOptions } = options;
     const normalizedPath = this.normalizePath(path);
     const queryString = this.normalizeQuery(query);
@@ -74,6 +91,9 @@ class FormFlowDataStore {
     if (token && !headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${token}`);
     }
+    if (token && !headers.has('x-formflow-token')) {
+      headers.set('x-formflow-token', token);
+    }
 
     let lastError: Error | null = null;
     const endpointSuffix = `${normalizedPath}${queryPart}`;
@@ -84,6 +104,7 @@ class FormFlowDataStore {
         const response = await fetch(endpoint, {
           ...fetchOptions,
           headers,
+          credentials: 'include',
         });
         const raw = (await response.json().catch(() => null)) as ApiResponse<T>;
 
