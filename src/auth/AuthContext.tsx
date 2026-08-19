@@ -70,18 +70,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: cleanedEmail, password: cleanedPassword }),
-      });
-      const raw = (await res.json().catch(() => null)) as ApiOk | ApiError | null;
-      if (!res.ok || !raw || raw.ok !== true || !raw.data?.token || !raw.data?.user) {
-        return false;
+      const requestBodies = JSON.stringify({ email: cleanedEmail, password: cleanedPassword });
+      const endpoints = [API_BASE ? `${API_BASE}/auth/login` : '', '/api/auth/login'];
+      let res: Response | null = null;
+      let raw: ApiOk | ApiError | null = null;
+
+      for (const endpoint of endpoints) {
+        if (!endpoint) continue;
+        try {
+          res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: requestBodies,
+          });
+          raw = (await res.json().catch(() => null)) as ApiOk | ApiError | null;
+          if (res.ok || (raw && raw.ok === false && res.status === 401)) {
+            break;
+          }
+        } catch {
+          res = null;
+          raw = null;
+        }
       }
 
+      if (!res || !raw || raw.ok !== true || !raw.data?.token || !raw.data?.user) {
+        return false;
+      }
       const authData = raw as ApiOk;
       const profile = authData.data.user;
       setUser(profile);

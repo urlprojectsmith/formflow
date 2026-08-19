@@ -248,11 +248,59 @@ class DataStore {
       if (!this.users.length) {
         this.users = this.buildSeedUsers();
       }
+      this.ensureSeedUsers();
+      this.persist();
       return;
     }
     this.tenants = this.tenants.length > 0 ? [...this.tenants] : [this.getDefaultTenant()];
     this.users = this.buildSeedUsers();
+    this.ensureSeedUsers();
     this.persist();
+  }
+
+  private ensureSeedUsers() {
+    const normalizeTenantIds = (tenantIds: string[]) =>
+      Array.from(
+        new Set(
+          tenantIds
+            .map((id) => String(id || '').trim())
+            .filter(Boolean)
+            .filter((id) => this.tenants.some((tenant) => tenant.id === id))
+        )
+      );
+
+    for (const seed of LOGIN_CREDENTIALS) {
+      const tenant = seed.tenantId ? this.getTenantById(seed.tenantId) : undefined;
+      const requestedTenantIds = normalizeTenantIds(seed.tenantIds.length ? seed.tenantIds : tenant ? [tenant.id] : []);
+      const expected = {
+        name: seed.name,
+        email: normalizeEmail(seed.email),
+        password: seed.password,
+        role: seed.role,
+        tenantId: tenant?.id,
+        tenantIds: requestedTenantIds,
+        avatarUrl: seed.avatarUrl,
+        organizationName: seed.organizationName,
+        plan: seed.plan,
+      } as InternalAuthUser;
+
+      const idx = this.users.findIndex((user) => normalizeEmail(user.email) === normalizeEmail(seed.email));
+      if (idx < 0) {
+        this.users.unshift({
+          ...expected,
+          id: `seed_${seed.role.toLowerCase().replace(/ /g, '-')}_${seed.email}`,
+          tenantId: expected.tenantId || seed.tenantId,
+        });
+        continue;
+      }
+
+      const existing = this.users[idx];
+      this.users[idx] = {
+        ...existing,
+        ...expected,
+        id: existing.id || `seed_${seed.role.toLowerCase().replace(/ /g, '-')}_${seed.email}`,
+      };
+    }
   }
 
   private getDefaultTenant(): TenantAccount {
