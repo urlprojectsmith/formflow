@@ -9,14 +9,52 @@ import {
   ArrowRight,
   Trash2,
   Pencil,
-  Plus,
   X,
   UserPlus,
 } from 'lucide-react';
 import { TenantAccount, TenantStatus, UserProfile } from '../types';
-import { initialTenants, initialTenantUsers } from '../services/mockData';
 
-const SUPER_AGENCY_STORE_KEY = 'formflow_super_agency_store_v1';
+const API_BASE = (() => {
+  const raw = String((import.meta as Record<string, unknown>).env?.VITE_API_BASE_URL || '/api').trim();
+  if (!raw) {
+    return '/api';
+  }
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      const path = (parsed.pathname || '').replace(/\/+$/, '');
+      if (!path || path === '' || path === '/') {
+        return `${parsed.origin}/api`;
+      }
+      if (path === '/api') {
+        return `${parsed.origin}/api`;
+      }
+      return `${parsed.origin}${path}/api`;
+    } catch {
+      return '/api';
+    }
+  }
+  const path = raw.replace(/\/+$/, '');
+  if (!path || path === '/') {
+    return '/api';
+  }
+  if (path === '/api') {
+    return '/api';
+  }
+  return path.startsWith('/') ? `${path}/api` : `${path}/api`;
+})();
+
+const STORAGE_TOKEN_KEY = 'formflow_auth_token';
+
+interface ApiOk<T> {
+  ok: true;
+  data: T;
+}
+
+interface ApiFail {
+  ok: false;
+  error: string;
+}
 
 type TenantFormRole = 'Admin' | 'Developer' | 'User';
 
@@ -40,8 +78,6 @@ type UserFormInput = {
 
 const ROLE_OPTIONS: TenantFormRole[] = ['Admin', 'Developer', 'User'];
 const PLAN_OPTIONS: TenantAccount['plan'][] = ['Starter', 'Growth Plan', 'Enterprise'];
-
-const nowISO = () => new Date().toISOString();
 
 const slugify = (value: string) =>
   value
@@ -68,6 +104,53 @@ const defaultUserForm = (tenant?: TenantAccount | null): UserFormInput => ({
   password: '',
 });
 
+const normalizeToken = () => (typeof window === 'undefined' ? '' : window.localStorage.getItem(STORAGE_TOKEN_KEY) || '');
+
+const apiRequest = async <T,>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T | null> => {
+  const token = normalizeToken();
+  const endpoint = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  const response = await fetch(endpoint, {
+    ...(init.body ? { body: init.body } : {}),
+    method: init.method || 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...init,
+  });
+  const raw = (await response.json().catch(() => null)) as ApiOk<T> | ApiFail | null;
+  if (!response.ok || !raw || raw.ok !== true) {
+    return null;
+  }
+  return raw.data;
+};
+
+const mergeUsers = (nextUsers: UserProfile[]) => {
+  const indexed = new Map<string, UserProfile>();
+  for (const user of nextUsers) {
+    const existing = indexed.get(user.id);
+    if (!existing) {
+      indexed.set(user.id, {
+        ...user,
+        tenantIds: user.tenantIds || (user.tenantId ? [user.tenantId] : []),
+      });
+      continue;
+    }
+    indexed.set(user.id, {
+      ...existing,
+      ...user,
+      tenantIds: Array.from(
+        new Set([...(existing.tenantIds || []), ...(Array.isArray(user.tenantIds) ? user.tenantIds : [])])
+      ),
+    });
+  }
+  return Array.from(indexed.values());
+};
+
 export const SuperAgencyDashboardPage: React.FC = () => {
   const [tenants, setTenants] = useState<TenantAccount[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -80,37 +163,35 @@ export const SuperAgencyDashboardPage: React.FC = () => {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userStatusMessage, setUserStatusMessage] = useState<string>('');
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(SUPER_AGENCY_STORE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as { tenants?: TenantAccount[]; users?: UserProfile[] };
-        if (Array.isArray(saved.tenants)) {
-          setTenants(saved.tenants);
-        } else {
-          setTenants([...initialTenants]);
-        }
-        if (Array.isArray(saved.users)) {
-          setUsers(saved.users);
-        } else {
-          setUsers([...initialTenantUsers]);
-        }
-        return;
-      }
-    } catch {
-      // ignore invalid storage state and bootstrap defaults
+  const loadUsersForTenants = async (tenantList: TenantAccount[]) => {
+    if (!tenantList.length) {
+      setUsers([]);
+      return;
     }
-    setTenants([...initialTenants]);
-    setUsers([...initialTenantUsers]);
-  }, []);
+    const responses = await Promise.all(
+      tenantList.map((tenant) =>
+        apiRequest<UserProfile[]>(`/tenants/${tenant.id}/users`)
+          .catch(() => null)
+          .then((result) => result || [])
+      )
+    );
+    const allUsers = responses.flat();
+    const merged = mergeUsers(allUsers);
+    setUsers(merged);
+  };
+
+  const loadData = async () => {
+    const tenantData = await apiRequest<TenantAccount[]>('/tenants');
+    const nextTenants = Array.isArray(tenantData) ? tenantData : [];
+    setTenants(nextTenants);
+    await loadUsersForTenants(nextTenants);
+  };
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(SUPER_AGENCY_STORE_KEY, JSON.stringify({ tenants, users }));
-    } catch {
-      // no-op
-    }
-  }, [tenants, users]);
+    loadData().catch(() => {
+      setTenantStatusMessage('Unable to load accounts. Please verify login/session.');
+    });
+  }, []);
 
   useEffect(() => {
     if (!selectedTenantId && tenants.length > 0) {
@@ -162,10 +243,10 @@ export const SuperAgencyDashboardPage: React.FC = () => {
     setUserStatusMessage('');
   };
 
-  const onCreateOrUpdateTenant = (event: FormEvent) => {
+  const onCreateOrUpdateTenant = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (!tenantForm.name.trim()) {
+      if (!tenantForm.name.trim()) {
       setTenantStatusMessage('Tenant name is required.');
       return;
     }
@@ -188,64 +269,68 @@ export const SuperAgencyDashboardPage: React.FC = () => {
     }
 
     if (editingTenantId) {
-      setTenants((current) =>
-        current.map((tenant) =>
-          tenant.id === editingTenantId
-            ? {
-                ...tenant,
-                name: tenantForm.name.trim(),
-                slug: normalizedSlug,
-                status: tenantForm.status,
-                plan: tenantForm.plan,
-                adminName: tenantForm.adminName.trim(),
-                adminEmail: tenantForm.adminEmail.trim(),
-                updatedAt: nowISO(),
-              }
-            : tenant
-        )
-      );
+      const updated = await apiRequest<TenantAccount>(`/tenants/${editingTenantId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: tenantForm.name.trim(),
+          slug: normalizedSlug,
+          status: tenantForm.status,
+          plan: tenantForm.plan,
+          adminName: tenantForm.adminName.trim(),
+          adminEmail: tenantForm.adminEmail.trim(),
+        }),
+      });
+      if (!updated) {
+        setTenantStatusMessage('Unable to update account.');
+        return;
+      }
+      setTenants((current) => current.map((tenant) => (tenant.id === updated.id ? updated : tenant)));
       setTenantStatusMessage(`Account ${tenantForm.name} updated.`);
     } else {
-      const newTenant: TenantAccount = {
-        id: `tenant_${Date.now()}`,
-        name: tenantForm.name.trim(),
-        slug: normalizedSlug,
-        status: tenantForm.status,
-        plan: tenantForm.plan,
-        createdAt: nowISO(),
-        adminName: tenantForm.adminName.trim(),
-        adminEmail: tenantForm.adminEmail.trim(),
-      };
-      setTenants((current) => [newTenant, ...current]);
-      setSelectedTenantId(newTenant.id);
+      const tenant = await apiRequest<TenantAccount>('/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: tenantForm.name.trim(),
+          slug: normalizedSlug,
+          status: tenantForm.status,
+          plan: tenantForm.plan,
+          adminName: tenantForm.adminName.trim(),
+          adminEmail: tenantForm.adminEmail.trim(),
+        }),
+      });
+      if (!tenant) {
+        setTenantStatusMessage('Unable to create account.');
+        return;
+      }
+      setTenants((current) => [tenant, ...current]);
+      setSelectedTenantId(tenant.id);
       setTenantStatusMessage(`Account ${tenantForm.name} created.`);
     }
 
     setTenantForm(defaultTenantForm());
     setEditingTenantId(null);
+    await loadData();
   };
 
-  const onDeleteTenant = (tenantId: string) => {
+  const onDeleteTenant = async (tenantId: string) => {
     const tenant = tenants.find((item) => item.id === tenantId);
     if (!tenant) return;
     if (!window.confirm(`Delete account "${tenant.name}" and remove all its users?`)) return;
 
+    const response = await apiRequest<{ success: true }>(`/tenants/${tenantId}`, { method: 'DELETE' });
+    if (!response) {
+      setTenantStatusMessage('Unable to delete account.');
+      return;
+    }
     const remainingTenants = tenants.filter((item) => item.id !== tenantId);
     setTenants(remainingTenants);
-    setUsers((current) =>
-      current.filter(
-        (item) =>
-          item.tenantId !== tenantId &&
-          !(Array.isArray(item.tenantIds) && item.tenantIds.includes(tenantId))
-      )
-    );
-    if (selectedTenantId === tenantId) {
-      setSelectedTenantId(remainingTenants[0]?.id || '');
-    }
+    await loadData();
+    const nextSelected = selectedTenantId === tenantId ? remainingTenants[0]?.id || '' : selectedTenantId;
+    setSelectedTenantId(nextSelected);
     setTenantStatusMessage(`Account ${tenant.name} deleted.`);
     setEditingTenantId(null);
     setTenantForm(defaultTenantForm());
-    syncUserTenantContext(remainingTenants[0] || null);
+    syncUserTenantContext(nextSelected ? tenants.find((tenant) => tenant.id === nextSelected) || null : remainingTenants[0] || null);
   };
 
   const onSelectTenant = (tenantId: string) => {
@@ -279,7 +364,7 @@ export const SuperAgencyDashboardPage: React.FC = () => {
     setTenantStatusMessage('');
   };
 
-  const onSubmitUser = (event: FormEvent) => {
+  const onSubmitUser = async (event: FormEvent) => {
     event.preventDefault();
     if (!selectedTenant) {
       setUserStatusMessage('Select an account first.');
@@ -299,54 +384,47 @@ export const SuperAgencyDashboardPage: React.FC = () => {
     }
 
     if (editingUserId) {
-      const passwordPatch = trimmedPassword || undefined;
+      const updated = await apiRequest<UserProfile>(`/tenants/${selectedTenant.id}/users/${editingUserId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: trimmedName,
+          email: trimmedEmail,
+          role: userForm.role,
+          tenantIds: tenantAssignments,
+          organizationName: selectedTenant.name,
+          ...(trimmedPassword ? { password: trimmedPassword } : {}),
+        }),
+      });
+      if (!updated) {
+        setUserStatusMessage('Unable to update user.');
+        return;
+      }
       setUsers((current) =>
-        current.map((user) =>
-          user.id === editingUserId
-            ? {
-                ...user,
-                name: trimmedName,
-                email: trimmedEmail,
-                role: userForm.role,
-                tenantIds: tenantAssignments,
-                tenantId: tenantAssignments[0],
-                organizationName: selectedTenant.name,
-                ...(passwordPatch ? { password: passwordPatch } : {}),
-              }
-            : user
-        )
+        current.map((user) => (user.id === updated.id ? { ...user, ...updated, tenantIds: updated.tenantIds || user.tenantIds } : user))
       );
       setUserStatusMessage(`User ${userForm.name} updated.`);
+      await loadData();
     } else {
       if (!trimmedPassword) {
         setUserStatusMessage('Password is required for new users.');
         return;
       }
-      const emailExists = users.some(
-        (user) =>
-          user.email.toLowerCase() === trimmedEmail &&
-          tenantAssignments.some(
-            (tenantId) => user.tenantId === tenantId || (Array.isArray(user.tenantIds) && user.tenantIds.includes(tenantId))
-          )
-      );
-      if (emailExists) {
-        setUserStatusMessage('This email already exists in the selected account.');
+      const created = await apiRequest<UserProfile[]>('/tenant-users', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: trimmedName,
+          email: trimmedEmail,
+          role: userForm.role,
+          password: trimmedPassword,
+          tenantIds: tenantAssignments,
+          organizationName: selectedTenant.name,
+        }),
+      });
+      if (!created?.length) {
+        setUserStatusMessage('Unable to create user.');
         return;
       }
-
-      const newUser: UserProfile = {
-        id: `usr_${Date.now()}`,
-        name: userForm.name.trim(),
-        email: trimmedEmail,
-        role: userForm.role,
-        tenantId: tenantAssignments[0],
-        tenantIds: tenantAssignments,
-        avatarUrl: `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(userForm.email.trim())}`,
-        organizationName: selectedTenant.name,
-        password: trimmedPassword,
-        plan: userForm.role === 'Admin' || userForm.role === 'Developer' ? 'Growth Plan' : 'Starter',
-      };
-      setUsers((current) => [newUser, ...current]);
+      await loadData();
       setUserStatusMessage(`User ${userForm.name} added.`);
     }
 
@@ -369,27 +447,17 @@ export const SuperAgencyDashboardPage: React.FC = () => {
     setUserStatusMessage(`Editing user: ${user.name}`);
   };
 
-  const onDeleteUser = (userId: string) => {
+  const onDeleteUser = async (userId: string) => {
     if (!window.confirm('Delete this user from this account?')) return;
     if (!selectedTenant) return;
-    setUsers((current) =>
-      current
-        .map((user) => {
-          if (user.id !== userId) return user;
-          const remainingAssignments = Array.isArray(user.tenantIds)
-            ? user.tenantIds.filter((tenantId) => tenantId !== selectedTenant.id)
-            : [];
-          if (remainingAssignments.length === 0) {
-            return null;
-          }
-          return {
-            ...user,
-            tenantIds: remainingAssignments,
-            tenantId: remainingAssignments[0],
-          };
-        })
-        .filter((user): user is UserProfile => user !== null)
-    );
+    const removed = await apiRequest<{ success: true }>(`/tenants/${selectedTenant.id}/users/${userId}`, {
+      method: 'DELETE',
+    });
+    if (!removed) {
+      setUserStatusMessage('Unable to remove user from account.');
+      return;
+    }
+    await loadData();
     setUserStatusMessage('User removed.');
     setEditingUserId(null);
     setUserForm(defaultUserForm(selectedTenant));

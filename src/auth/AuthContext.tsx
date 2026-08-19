@@ -105,11 +105,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const requestBodies = JSON.stringify({ email: cleanedEmail, password: cleanedPassword });
-      const endpoints = [API_BASE ? `${API_BASE}/auth/login` : '', '/api/auth/login'];
+      const endpoints = [
+        API_BASE ? `${API_BASE.replace(/\/+$/, '')}/auth/login` : '',
+        '/api/auth/login',
+        '/auth/login',
+      ];
+      const uniqueEndpoints = Array.from(new Set(endpoints.filter(Boolean)));
       let res: Response | null = null;
       let raw: ApiOk | ApiError | null = null;
 
-      for (const endpoint of endpoints) {
+      for (const endpoint of uniqueEndpoints) {
         if (!endpoint) continue;
         try {
           res = await fetch(endpoint, {

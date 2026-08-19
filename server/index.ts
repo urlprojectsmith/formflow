@@ -191,6 +191,28 @@ function generateAuthToken(user: AuthUser) {
   return Buffer.from(raw).toString('base64url');
 }
 
+function handleAuthLogin(req: express.Request, res: express.Response) {
+  const body = req.body || {};
+  const email = String(body.email || '').trim();
+  const password = String(body.password || '');
+  if (!email) {
+    fail(res, 'email is required');
+    return;
+  }
+  if (!password) {
+    fail(res, 'password is required');
+    return;
+  }
+
+  const result = store.authenticate({ email, password });
+  if (!result) {
+    fail(res, 'Invalid credentials', 401);
+    return;
+  }
+  const { user, token } = result;
+  ok(res, { token, user, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
+}
+
 function parseAuthToken(header: string | undefined): AuthUser | null {
   if (!header) return null;
   const token = header.replace(/^Bearer\s+/i, '').trim();
@@ -1009,6 +1031,32 @@ class DataStore {
     return this.tenants[idx];
   }
 
+  deleteTenant(tenantId: string) {
+    const idx = this.tenants.findIndex((tenant) => tenant.id === tenantId);
+    if (idx < 0) return null;
+
+    this.tenants = this.tenants.filter((tenant) => tenant.id !== tenantId);
+    this.users = this.users
+      .map((user) => {
+        if (!Array.isArray(user.tenantIds) || !user.tenantIds.includes(tenantId)) {
+          return user;
+        }
+        const nextTenantIds = user.tenantIds.filter((id) => id !== tenantId);
+        if (!nextTenantIds.length) {
+          return null;
+        }
+        return {
+          ...user,
+          tenantIds: nextTenantIds,
+          tenantId: nextTenantIds[0],
+        };
+      })
+      .filter((user): user is InternalAuthUser => user !== null);
+
+    this.persist();
+    return true;
+  }
+
   getTenantUsers(tenantId: string) {
     return [
       ...this.users
@@ -1286,26 +1334,8 @@ app.get(`${API_PREFIX}/health`, (_req, res) => {
   ok(res, { status: 'ok', service: 'formflow-api', env: NODE_ENV });
 });
 
-app.post(`${API_PREFIX}/auth/login`, (req, res) => {
-  const body = req.body || {};
-  const email = String(body.email || '').trim();
-  const password = String(body.password || '');
-  if (!email) {
-    fail(res, 'email is required');
-    return;
-  }
-  if (!password) {
-    fail(res, 'password is required');
-    return;
-  }
-  const result = store.authenticate({ email, password });
-  if (!result) {
-    fail(res, 'Invalid credentials', 401);
-    return;
-  }
-  const { user, token } = result;
-  ok(res, { token, user, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
-});
+app.post(`${API_PREFIX}/auth/login`, handleAuthLogin);
+app.post('/auth/login', handleAuthLogin);
 
 app.get(`${API_PREFIX}/me`, requireAuth, (req: AuthRequest, res) => {
   ok(res, req.authUser!);
@@ -1352,6 +1382,15 @@ app.patch(`${API_PREFIX}/tenants/:tenantId`, requireAuth, requireRole(['Super Ad
     return;
   }
   ok(res, tenant);
+});
+
+app.delete(`${API_PREFIX}/tenants/:tenantId`, requireAuth, requireRole(['Super Admin']), (req, res) => {
+  const removed = store.deleteTenant(req.params.tenantId);
+  if (!removed) {
+    fail(res, 'Tenant not found', 404);
+    return;
+  }
+  ok(res, { success: true });
 });
 
 app.get(`${API_PREFIX}/tenants/:tenantId/users`, requireAuth, requireRole(['Super Admin']), (req, res) => {
