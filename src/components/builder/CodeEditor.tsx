@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Editor from '@monaco-editor/react';
+import React, { useState, useEffect } from 'react';
 import {
   Code,
   FileCode,
@@ -61,13 +60,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<CodeTab>('html');
   const [htmlCode, setHtmlCode] = useState<string>(
-    form.customHtml ?? generateDefaultCustomHtml(form)
+    form.customHtml?.trim() ? form.customHtml : generateDefaultCustomHtml(form)
   );
   const [cssCode, setCssCode] = useState<string>(
-    form.customCss ?? generateDefaultCustomCss(form)
+    form.customCss?.trim() ? form.customCss : generateDefaultCustomCss(form)
   );
   const [jsCode, setJsCode] = useState<string>(
-    form.customJs ?? generateDefaultCustomJs(form)
+    form.customJs?.trim() ? form.customJs : generateDefaultCustomJs(form)
   );
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -81,14 +80,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
   // Synchronize initial state if form prop updates from outside
   useEffect(() => {
-    if (form.customHtml !== undefined && form.customHtml !== htmlCode) {
-      setHtmlCode(form.customHtml || generateDefaultCustomHtml(form));
+    if (form.customHtml !== htmlCode) {
+      setHtmlCode(form.customHtml?.trim() ? form.customHtml : generateDefaultCustomHtml(form));
     }
-    if (form.customCss !== undefined && form.customCss !== cssCode) {
-      setCssCode(form.customCss || generateDefaultCustomCss(form));
+    if (form.customCss !== cssCode) {
+      setCssCode(form.customCss?.trim() ? form.customCss : generateDefaultCustomCss(form));
     }
-    if (form.customJs !== undefined && form.customJs !== jsCode) {
-      setJsCode(form.customJs || generateDefaultCustomJs(form));
+    if (form.customJs !== jsCode) {
+      setJsCode(form.customJs?.trim() ? form.customJs : generateDefaultCustomJs(form));
     }
   }, [form.id]);
 
@@ -206,6 +205,19 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     if (logFilter === 'events') return log.type === 'event';
     return true;
   });
+
+  const activeCode =
+    activeTab === 'html' ? htmlCode : activeTab === 'css' ? cssCode : jsCode;
+
+  const handleActiveCodeChange = (value: string) => {
+    if (activeTab === 'html') {
+      setHtmlCode(value);
+    } else if (activeTab === 'css') {
+      setCssCode(value);
+    } else {
+      setJsCode(value);
+    }
+  };
 
   return (
     <div
@@ -336,9 +348,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       </div>
 
       {/* Main Split Body: Monaco Editor on Left, Live Preview + Console on Right */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left Column: Monaco Code Editor */}
-        <div className="w-1/2 flex flex-col border-r border-slate-800 relative bg-[#1e1e1e]">
+        <div className="w-1/2 flex flex-col border-r border-slate-800 relative bg-[#1e1e1e] min-h-0">
           <div className="px-4 py-1.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
             <span className="flex items-center gap-1.5">
               <Code className="w-3.5 h-3.5 text-blue-400" />
@@ -349,68 +361,19 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             <span className="text-[10px] text-slate-500">Monaco Syntax Editor</span>
           </div>
 
-          <div className="flex-1 relative">
-            {activeTab === 'html' && (
-              <Editor
-                height="100%"
-                language="html"
-                theme="vs-dark"
-                value={htmlCode}
-                onChange={(v) => setHtmlCode(v || '')}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  tabSize: 2,
-                  wordWrap: 'on',
-                  automaticLayout: true,
-                }}
-              />
-            )}
-
-            {activeTab === 'css' && (
-              <Editor
-                height="100%"
-                language="css"
-                theme="vs-dark"
-                value={cssCode}
-                onChange={(v) => setCssCode(v || '')}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  tabSize: 2,
-                  wordWrap: 'on',
-                  automaticLayout: true,
-                }}
-              />
-            )}
-
-            {activeTab === 'js' && (
-              <Editor
-                height="100%"
-                language="javascript"
-                theme="vs-dark"
-                value={jsCode}
-                onChange={(v) => setJsCode(v || '')}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  tabSize: 2,
-                  wordWrap: 'on',
-                  automaticLayout: true,
-                }}
-              />
-            )}
+          <div className="flex-1 relative min-h-0">
+            <textarea
+              value={activeCode}
+              onChange={(event) => handleActiveCodeChange(event.target.value)}
+              spellCheck={false}
+              className="w-full h-full resize-none bg-[#1e1e1e] text-slate-100 font-mono text-[13px] leading-6 px-4 py-3 outline-none border-0 whitespace-pre tab-size-2"
+              aria-label={`Edit ${activeTab.toUpperCase()} code`}
+            />
           </div>
         </div>
 
         {/* Right Column: Sandboxed Live Preview (Top) & Runtime Console (Bottom) */}
-        <div className="w-1/2 flex flex-col bg-slate-950 overflow-hidden">
+        <div className="w-1/2 flex flex-col bg-slate-950 overflow-hidden min-h-0">
           {/* Top Panel: Sandboxed Iframe Preview */}
           <div className="flex-1 flex flex-col border-b border-slate-800 relative bg-slate-900">
             <div className="h-8 px-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono shrink-0">
@@ -430,7 +393,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             {/* Iframe Frame */}
             <div className="flex-1 bg-slate-100 relative">
               <iframe
-                sandbox="allow-scripts"
+                key={livePreviewDoc}
+                sandbox="allow-scripts allow-forms"
                 srcDoc={livePreviewDoc}
                 className="w-full h-full border-0 bg-white"
                 title="FormFlow Sandboxed Preview"
@@ -551,7 +515,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       {/* Render Mode Switch Warning Modal */}
       {showModeWarningModal && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl">
             <div className="flex items-center gap-3 text-amber-400">
               <div className="p-2 bg-amber-950/60 rounded-lg border border-amber-800/80">
                 <AlertTriangle className="w-6 h-6" />
@@ -561,24 +525,100 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                   Switch Render Mode?
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Changing how your published form is rendered to users.
+                  Choose which engine will render this form when it is published.
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-slate-300 space-y-2 leading-relaxed">
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-sm text-slate-300 space-y-3 leading-relaxed">
               {pendingMode === 'custom' ? (
                 <p>
-                  You are switching to <strong className="text-purple-400">Custom Code mode</strong>. The published form will render your custom HTML, CSS, and JS template instead of the visual canvas fields.
+                  You are switching to <strong className="text-purple-400">Custom Code mode</strong>. The published form will render your custom HTML, CSS, and JavaScript template instead of the visual canvas fields.
                 </p>
               ) : (
                 <p>
                   You are switching to <strong className="text-emerald-400">Visual Builder mode</strong>. The published form will render using the standard visual form field canvas schema.
                 </p>
               )}
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 Note: Switching modes will <strong>NOT</strong> delete your visual field schema or custom code. Both are preserved safely.
               </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className={`rounded-xl border p-4 space-y-3 ${
+                pendingMode === 'visual'
+                  ? 'border-emerald-500/60 bg-emerald-950/30'
+                  : 'border-slate-800 bg-slate-950/70'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-emerald-400" />
+                  <h4 className="text-sm font-black text-slate-100">Visual Builder</h4>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Best for normal no-code form building. The canvas fields, settings, validation, logic, actions, and theme are used by FormFlow to render the public form.
+                </p>
+                <div className="space-y-2 text-xs">
+                  <div className="flex gap-2 text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Add and edit fields visually without writing code.</span>
+                  </div>
+                  <div className="flex gap-2 text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Uses FormFlow's built-in validation and submission flow.</span>
+                  </div>
+                  <div className="flex gap-2 text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Works naturally with Logic, Actions, Analytics, and published versions.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`rounded-xl border p-4 space-y-3 ${
+                pendingMode === 'custom'
+                  ? 'border-purple-500/60 bg-purple-950/30'
+                  : 'border-slate-800 bg-slate-950/70'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Code className="w-4 h-4 text-purple-400" />
+                  <h4 className="text-sm font-black text-slate-100">Custom Code</h4>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Best for advanced layouts and developer-controlled experiences. Your HTML, CSS, and JavaScript decide the exact public form UI.
+                </p>
+                <div className="space-y-2 text-xs">
+                  <div className="flex gap-2 text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
+                    <span>Create custom structure, branding, spacing, and animations.</span>
+                  </div>
+                  <div className="flex gap-2 text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
+                    <span>Use custom JavaScript for special interactions and behavior.</span>
+                  </div>
+                  <div className="flex gap-2 text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
+                    <span>You are responsible for keeping field names and submit behavior correct.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-300">What Happens Step By Step</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="rounded-lg bg-slate-900 border border-slate-800 p-3">
+                  <div className="text-[10px] font-black text-blue-300 mb-1">Step 1</div>
+                  <p className="text-slate-300 leading-relaxed">Your visual schema and custom code are both kept safely.</p>
+                </div>
+                <div className="rounded-lg bg-slate-900 border border-slate-800 p-3">
+                  <div className="text-[10px] font-black text-blue-300 mb-1">Step 2</div>
+                  <p className="text-slate-300 leading-relaxed">FormFlow updates only the active render mode for this form.</p>
+                </div>
+                <div className="rounded-lg bg-slate-900 border border-slate-800 p-3">
+                  <div className="text-[10px] font-black text-blue-300 mb-1">Step 3</div>
+                  <p className="text-slate-300 leading-relaxed">The selected mode is used the next time you save and publish.</p>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">
