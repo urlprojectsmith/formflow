@@ -385,10 +385,19 @@ class FormFlowDataStore {
   }
 
   async publishFormVersion(formId: string, targetVersionNumber?: number): Promise<{ publishedVersion: FormVersion; formDef: FormDefinition }> {
-    return this.request<{ publishedVersion: FormVersion; formDef: FormDefinition }>(`/forms/${formId}/publish`, {
+    const result = await this.request<FormVersion | { publishedVersion: FormVersion; formDef: FormDefinition }>(`/forms/${formId}/publish`, {
       method: 'POST',
       body: JSON.stringify({ targetVersionNumber }),
     });
+
+    if ('publishedVersion' in result && 'formDef' in result) {
+      return result;
+    }
+
+    return {
+      publishedVersion: result,
+      formDef: result.definition,
+    };
   }
 
   async rollbackToVersion(formId: string, targetVersionNumber: number): Promise<FormVersion> {

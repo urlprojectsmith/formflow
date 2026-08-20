@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   X,
   Share2,
+  Loader2,
 } from 'lucide-react';
 import { ViewportMode, SaveStatus } from '../../types';
 
@@ -44,7 +45,7 @@ interface BuilderTopBarProps {
   onUndo: () => void;
   onRedo: () => void;
   onSaveNow: () => void;
-  onPublish: () => void;
+  onPublish: () => Promise<unknown> | void;
   onOpenEmbed?: () => void;
 }
 
@@ -73,6 +74,7 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState<boolean>(false);
   const [showSuccessToast, setShowSuccessToast] = useState<boolean>(false);
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
 
   useEffect(() => {
     setNameInput(formName);
@@ -89,12 +91,15 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
 
   const handleConfirmPublish = async () => {
     setIsPublishModalOpen(false);
+    setIsPublishing(true);
     try {
       await onPublish();
       setShowSuccessToast(true);
-      setTimeout(() => setShowSuccessToast(false), 4500);
+      setTimeout(() => setShowSuccessToast(false), 2200);
     } catch (err) {
       // Handled in saveStatus
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -354,32 +359,36 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
 
         <button
           onClick={() => setIsPublishModalOpen(true)}
+          disabled={isPublishing}
           className="flex items-center gap-1.5 px-3.5 py-1.5 theme-button-primary text-xs font-bold rounded-lg shadow-2xs transition-colors"
           title="Publish immutable version"
         >
-          <Send className="w-3.5 h-3.5" />
-          <span>Publish</span>
+          {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          <span>{isPublishing ? 'Publishing...' : 'Publish'}</span>
         </button>
       </div>
 
       {/* Success Toast Banner */}
       {showSuccessToast && (
-        <div className="fixed bottom-6 right-6 z-50 theme-surface px-4 py-3 rounded-xl shadow-xl border border-theme flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="w-8 h-8 rounded-full bg-theme-surface-hover text-theme-success flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold theme-text-primary">Published Successfully</div>
-            <div className="text-[11px] theme-text-muted">
-              Version {version} is now immutable and live on the public URL.
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-4">
+          <div className="theme-surface px-6 py-5 rounded-2xl shadow-2xl border border-theme flex items-center gap-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative w-12 h-12 rounded-full bg-theme-surface-hover text-theme-success flex items-center justify-center shrink-0">
+              <span className="absolute inset-0 rounded-full bg-theme-success opacity-20 animate-ping" />
+              <CheckCircle2 className="w-7 h-7 relative" />
             </div>
+            <div>
+              <div className="text-sm font-black theme-text-primary">Form Published</div>
+              <div className="text-xs theme-text-muted">
+                Version {version} is live. Redirecting back to the builder...
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSuccessToast(false)}
+              className="theme-text-muted hover:theme-text-primary p-1 ml-2 pointer-events-auto"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={() => setShowSuccessToast(false)}
-            className="theme-text-muted hover:theme-text-primary p-1 ml-2"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
       )}
 
@@ -420,10 +429,11 @@ export const BuilderTopBar: React.FC<BuilderTopBarProps> = ({
               </button>
               <button
                 onClick={handleConfirmPublish}
+                disabled={isPublishing}
                 className="px-4 py-2 text-xs font-bold text-white theme-button-primary rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
                 >
-                <Check className="w-3.5 h-3.5" />
-                <span>Confirm & Publish</span>
+                {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                <span>{isPublishing ? 'Publishing...' : 'Confirm & Publish'}</span>
               </button>
             </div>
           </div>
