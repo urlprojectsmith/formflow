@@ -24,6 +24,7 @@ import {
   FormSettings,
   FormTheme,
   FieldWidth,
+  FieldStyle,
 } from '../../types';
 import { generateSafeFieldName, generateUniqueId } from '../../utils/formBuilderUtils';
 
@@ -162,6 +163,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     const currentVal = selectedField.validation || {};
     onUpdateField(selectedField.id, {
       validation: { ...currentVal, ...updates },
+    });
+  };
+
+  const handleStyleUpdate = (updates: Partial<FieldStyle>) => {
+    if (!selectedField) return;
+    onUpdateField(selectedField.id, {
+      style: {
+        ...(selectedField.style || {}),
+        ...updates,
+      },
     });
   };
 
@@ -428,6 +439,186 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   <option value="2/3">Two Thirds (66%)</option>
                 </select>
               </div>
+            </div>
+
+            {/* FIELD STYLE SETTINGS */}
+            <div className="space-y-3 pt-3 border-t border-slate-200">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Field Style
+              </h4>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Background</label>
+                  <input
+                    type="color"
+                    value={selectedField.style?.backgroundColor || '#ffffff'}
+                    onChange={(e) => handleStyleUpdate({ backgroundColor: e.target.value })}
+                    className="w-full h-9 p-1 bg-slate-50 border border-slate-200 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Text Color</label>
+                  <input
+                    type="color"
+                    value={selectedField.style?.textColor || '#0f172a'}
+                    onChange={(e) => handleStyleUpdate({ textColor: e.target.value })}
+                    className="w-full h-9 p-1 bg-slate-50 border border-slate-200 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Label Color</label>
+                  <input
+                    type="color"
+                    value={selectedField.style?.labelColor || selectedField.style?.textColor || '#1e293b'}
+                    onChange={(e) => handleStyleUpdate({ labelColor: e.target.value })}
+                    className="w-full h-9 p-1 bg-slate-50 border border-slate-200 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Input Color</label>
+                  <input
+                    type="color"
+                    value={selectedField.style?.inputTextColor || '#0f172a'}
+                    onChange={(e) => handleStyleUpdate({ inputTextColor: e.target.value })}
+                    className="w-full h-9 p-1 bg-slate-50 border border-slate-200 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Input Background</label>
+                <input
+                  type="color"
+                  value={selectedField.style?.inputBackgroundColor || '#f8fafc'}
+                  onChange={(e) => handleStyleUpdate({ inputBackgroundColor: e.target.value })}
+                  className="w-full h-9 p-1 bg-slate-50 border border-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Background Image URL</label>
+                <input
+                  type="url"
+                  value={selectedField.style?.backgroundImage || ''}
+                  onChange={(e) => handleStyleUpdate({ backgroundImage: e.target.value })}
+                  placeholder="https://example.com/background.jpg"
+                  className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Alignment</label>
+                  <select
+                    value={selectedField.style?.alignment || 'left'}
+                    onChange={(e) => handleStyleUpdate({ alignment: e.target.value as FieldStyle['alignment'] })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                    <option value="right">Right</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Shadow</label>
+                  <select
+                    value={selectedField.style?.shadow || 'none'}
+                    onChange={(e) => handleStyleUpdate({ shadow: e.target.value as FieldStyle['shadow'] })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="none">None</option>
+                    <option value="sm">Small</option>
+                    <option value="md">Medium</option>
+                    <option value="lg">Large</option>
+                    <option value="xl">Extra Large</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Radius</label>
+                  <select
+                    value={selectedField.style?.borderRadius || 'none'}
+                    onChange={(e) => handleStyleUpdate({ borderRadius: e.target.value as FieldStyle['borderRadius'] })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="none">None</option>
+                    <option value="sm">Small</option>
+                    <option value="md">Medium</option>
+                    <option value="lg">Large</option>
+                    <option value="xl">Extra Large</option>
+                    <option value="full">Pill</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Padding</label>
+                  <select
+                    value={selectedField.style?.padding || 'none'}
+                    onChange={(e) => handleStyleUpdate({ padding: e.target.value as FieldStyle['padding'] })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="none">None</option>
+                    <option value="sm">Small</option>
+                    <option value="md">Medium</option>
+                    <option value="lg">Large</option>
+                    <option value="xl">Extra Large</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Font Family</label>
+                <select
+                  value={selectedField.style?.fontFamily || ''}
+                  onChange={(e) => handleStyleUpdate({ fontFamily: e.target.value || undefined })}
+                  className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Use Form Theme</option>
+                  <option value="Inter, sans-serif">Inter</option>
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="'Courier New', monospace">Courier New</option>
+                  <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                  <option value="'Times New Roman', serif">Times New Roman</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Font Size</label>
+                  <select
+                    value={selectedField.style?.fontSize || 'sm'}
+                    onChange={(e) => handleStyleUpdate({ fontSize: e.target.value as FieldStyle['fontSize'] })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="xs">XS</option>
+                    <option value="sm">Small</option>
+                    <option value="md">Medium</option>
+                    <option value="lg">Large</option>
+                    <option value="xl">XL</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Font Style</label>
+                  <select
+                    value={selectedField.style?.fontWeight || 'semibold'}
+                    onChange={(e) => handleStyleUpdate({ fontWeight: e.target.value as FieldStyle['fontWeight'] })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="medium">Medium</option>
+                    <option value="semibold">Semi Bold</option>
+                    <option value="bold">Bold</option>
+                    <option value="extrabold">Extra Bold</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onUpdateField(selectedField.id, { style: undefined })}
+                className="w-full px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Reset Field Style
+              </button>
             </div>
 
             {/* VALIDATION SETTINGS */}

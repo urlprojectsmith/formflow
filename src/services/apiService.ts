@@ -524,6 +524,17 @@ class FormFlowDataStore {
     });
   }
 
+  async verifyDomain(id: string): Promise<Domain> {
+    return this.request<Domain>(`/domains/${id}/verify`, {
+      method: 'POST',
+    });
+  }
+
+  async deleteDomain(id: string): Promise<boolean> {
+    const result = await this.request<{ success: true }>(`/domains/${id}`, { method: 'DELETE' });
+    return result?.success === true;
+  }
+
   async getUserProfile(): Promise<UserProfile> {
     return this.request<UserProfile>('/me');
   }

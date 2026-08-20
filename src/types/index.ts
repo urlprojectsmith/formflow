@@ -105,6 +105,7 @@ export interface Domain {
   connectedFormsCount: number;
   sslEnabled: boolean;
   createdAt: string;
+  verifiedAt?: string;
   isDefault?: boolean;
   cnameRecord: string;
   tenantId?: string;

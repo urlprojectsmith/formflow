@@ -52,6 +52,73 @@ const getWidthClass = (width?: string) => {
   }
 };
 
+const FIELD_FONT_SIZES: Record<string, string> = {
+  xs: '0.75rem',
+  sm: '0.875rem',
+  md: '1rem',
+  lg: '1.125rem',
+  xl: '1.25rem',
+};
+
+const FIELD_FONT_WEIGHTS: Record<string, React.CSSProperties['fontWeight']> = {
+  normal: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+  extrabold: 800,
+};
+
+const FIELD_RADII: Record<string, string> = {
+  none: '0px',
+  sm: '4px',
+  md: '8px',
+  lg: '12px',
+  xl: '16px',
+  full: '9999px',
+};
+
+const FIELD_SHADOWS: Record<string, string> = {
+  none: 'none',
+  sm: '0 1px 2px rgba(15, 23, 42, 0.08)',
+  md: '0 8px 20px rgba(15, 23, 42, 0.10)',
+  lg: '0 16px 32px rgba(15, 23, 42, 0.14)',
+  xl: '0 24px 48px rgba(15, 23, 42, 0.18)',
+};
+
+const FIELD_PADDING: Record<string, string> = {
+  none: undefined as unknown as string,
+  sm: '0.5rem',
+  md: '0.75rem',
+  lg: '1rem',
+  xl: '1.25rem',
+};
+
+const getFieldCanvasStyle = (field: FormField): React.CSSProperties => {
+  const style = field.style || {};
+  return {
+    backgroundColor: style.backgroundColor,
+    backgroundImage: style.backgroundImage ? `url("${style.backgroundImage}")` : undefined,
+    backgroundSize: style.backgroundImage ? 'cover' : undefined,
+    backgroundPosition: style.backgroundImage ? 'center' : undefined,
+    color: style.textColor,
+    textAlign: style.alignment,
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize ? FIELD_FONT_SIZES[style.fontSize] : undefined,
+    fontWeight: style.fontWeight ? FIELD_FONT_WEIGHTS[style.fontWeight] : undefined,
+    borderRadius: style.borderRadius ? FIELD_RADII[style.borderRadius] : undefined,
+    boxShadow: style.shadow ? FIELD_SHADOWS[style.shadow] : undefined,
+    padding: style.padding ? FIELD_PADDING[style.padding] : undefined,
+    overflow: style.backgroundImage || style.borderRadius ? 'hidden' : undefined,
+  };
+};
+
+const getFieldPreviewStyle = (field: FormField): React.CSSProperties => ({
+  backgroundColor: field.style?.inputBackgroundColor,
+  color: field.style?.inputTextColor || field.style?.textColor,
+  textAlign: field.style?.alignment,
+  borderRadius: field.style?.borderRadius ? FIELD_RADII[field.style.borderRadius] : undefined,
+});
+
 interface CanvasFieldCardProps {
   field: FormField;
   index: number;
@@ -90,6 +157,7 @@ const CanvasFieldCard: React.FC<CanvasFieldCardProps> = memo(
             ? 'border-blue-600 bg-blue-50/20 ring-2 ring-blue-500/20 shadow-xs'
             : 'border-slate-200 hover:border-slate-300'
         } ${field.hidden ? 'opacity-60 border-dashed' : ''}`}
+        style={getFieldCanvasStyle(field)}
       >
         {/* Floating Control Bar for Selected Field */}
         {isSelected && (
@@ -127,7 +195,7 @@ const CanvasFieldCard: React.FC<CanvasFieldCardProps> = memo(
               <GripVertical className="w-3.5 h-3.5" />
             </div>
             <div className="truncate">
-              <span className="text-xs font-bold text-slate-900 truncate">
+              <span className="text-xs font-bold text-slate-900 truncate" style={{ color: field.style?.labelColor || field.style?.textColor }}>
                 {field.label}
               </span>
               {field.required && <span className="text-rose-500 ml-0.5 font-bold">*</span>}
@@ -164,22 +232,25 @@ const CanvasFieldCard: React.FC<CanvasFieldCardProps> = memo(
         {/* Visual Input Preview Component */}
         <div className="mt-2 pointer-events-none opacity-85">
           {['text', 'email', 'phone', 'number', 'date', 'time'].includes(field.type) && (
-            <div className="w-full px-3 py-1.5 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg">
+            <div className="w-full px-3 py-1.5 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg" style={getFieldPreviewStyle(field)}>
               {field.defaultValue || field.placeholder || `Enter ${field.label}...`}
             </div>
           )}
 
           {field.type === 'textarea' && (
             <div
-              style={{ height: `${(field.rows || 3) * 20}px` }}
               className="w-full px-3 py-1.5 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg"
+              style={{
+                height: `${(field.rows || 3) * 20}px`,
+                ...getFieldPreviewStyle(field),
+              }}
             >
               {field.defaultValue || field.placeholder || 'Textarea content...'}
             </div>
           )}
 
           {['select', 'multiselect'].includes(field.type) && (
-            <div className="w-full px-3 py-1.5 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+            <div className="w-full px-3 py-1.5 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between" style={getFieldPreviewStyle(field)}>
               <span>{field.placeholder || 'Select option...'}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </div>
@@ -245,7 +316,11 @@ const CanvasFieldCard: React.FC<CanvasFieldCardProps> = memo(
             >
               <button
                 type="button"
-                style={{ backgroundColor: primaryColor }}
+                style={{
+                  backgroundColor: field.style?.inputBackgroundColor || primaryColor,
+                  color: field.style?.inputTextColor || field.style?.textColor || '#ffffff',
+                  borderRadius: field.style?.borderRadius ? FIELD_RADII[field.style.borderRadius] : undefined,
+                }}
                 className={`px-4 py-2 text-white text-xs font-bold rounded-lg ${
                   field.buttonAlign === 'full' ? 'w-full' : ''
                 }`}

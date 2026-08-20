@@ -1130,13 +1130,24 @@ class DataStore {
   }
 
   getDomains(tenantId?: string) {
-    return this.tenantAware([...this.domains], tenantId);
+    return this.tenantAware([...this.domains], tenantId).map((domain) => ({
+      ...domain,
+      connectedFormsCount: this.tenantAware(this.forms, tenantId).filter((form) => form.domain === domain.domainName).length,
+    }));
   }
 
   addDomain(domainName: string, tenantId?: string) {
+    const normalized = domainName.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/i.test(normalized)) {
+      return null;
+    }
+    const exists = this.domains.some((domain) => domain.domainName === normalized && (!tenantId || domain.tenantId === tenantId));
+    if (exists) {
+      return null;
+    }
     const dom: Domain = {
       id: randomId('dom'),
-      domainName: domainName.toLowerCase().trim(),
+      domainName: normalized,
       tenantId: tenantId || DEFAULT_TENANT_ID,
       status: 'pending_dns',
       connectedFormsCount: 0,
@@ -1148,6 +1159,35 @@ class DataStore {
     this.domains.push(dom);
     this.persist();
     return dom;
+  }
+
+  verifyDomain(domainId: string, tenantId?: string) {
+    const domain = this.domains.find((item) => item.id === domainId && (!tenantId || item.tenantId === tenantId));
+    if (!domain) return null;
+
+    domain.status = 'active';
+    domain.sslEnabled = true;
+    domain.verifiedAt = nowISO();
+    this.persist();
+    return {
+      ...domain,
+      connectedFormsCount: this.tenantAware(this.forms, tenantId).filter((form) => form.domain === domain.domainName).length,
+    };
+  }
+
+  deleteDomain(domainId: string, tenantId?: string) {
+    const domain = this.domains.find((item) => item.id === domainId && (!tenantId || item.tenantId === tenantId));
+    if (!domain) return false;
+
+    this.domains = this.domains.filter((item) => item.id !== domainId);
+    this.forms.forEach((form) => {
+      if (form.domain === domain.domainName && (!tenantId || form.tenantId === tenantId)) {
+        form.domain = undefined;
+        form.updatedAt = nowISO();
+      }
+    });
+    this.persist();
+    return true;
   }
 
   getNotifications(tenantId?: string) {
@@ -1981,7 +2021,32 @@ app.post(`${API_PREFIX}/domains`, requireAuth, requireRole(['Super Admin', 'Admi
     return;
   }
   const tenantId = req.authUser && req.authUser.role !== 'Super Admin' ? req.authUser.tenantId : undefined;
-  ok(res, store.addDomain(domainName, tenantId), 201);
+  const created = store.addDomain(domainName, tenantId);
+  if (!created) {
+    fail(res, 'Enter a valid unique domain, for example intake.yourcompany.com', 400);
+    return;
+  }
+  ok(res, created, 201);
+});
+
+app.post(`${API_PREFIX}/domains/:id/verify`, requireAuth, requireRole(['Super Admin', 'Admin']), (req, res) => {
+  const tenantId = req.authUser && req.authUser.role !== 'Super Admin' ? req.authUser.tenantId : undefined;
+  const domain = store.verifyDomain(req.params.id, tenantId);
+  if (!domain) {
+    fail(res, 'Domain not found', 404);
+    return;
+  }
+  ok(res, domain);
+});
+
+app.delete(`${API_PREFIX}/domains/:id`, requireAuth, requireRole(['Super Admin', 'Admin']), (req, res) => {
+  const tenantId = req.authUser && req.authUser.role !== 'Super Admin' ? req.authUser.tenantId : undefined;
+  const deleted = store.deleteDomain(req.params.id, tenantId);
+  if (!deleted) {
+    fail(res, 'Domain not found', 404);
+    return;
+  }
+  ok(res, { success: true });
 });
 
 app.get(`${API_PREFIX}/notifications`, requireAuth, (_req, res) => {

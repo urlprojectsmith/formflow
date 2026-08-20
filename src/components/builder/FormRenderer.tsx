@@ -64,6 +64,84 @@ const getFontSizeClass = (fontSize?: string) => {
   }
 };
 
+const FIELD_FONT_SIZES: Record<string, string> = {
+  xs: '0.75rem',
+  sm: '0.875rem',
+  md: '1rem',
+  lg: '1.125rem',
+  xl: '1.25rem',
+};
+
+const FIELD_FONT_WEIGHTS: Record<string, React.CSSProperties['fontWeight']> = {
+  normal: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+  extrabold: 800,
+};
+
+const FIELD_RADII: Record<string, string> = {
+  none: '0px',
+  sm: '4px',
+  md: '8px',
+  lg: '12px',
+  xl: '16px',
+  full: '9999px',
+};
+
+const FIELD_SHADOWS: Record<string, string> = {
+  none: 'none',
+  sm: '0 1px 2px rgba(15, 23, 42, 0.08)',
+  md: '0 8px 20px rgba(15, 23, 42, 0.10)',
+  lg: '0 16px 32px rgba(15, 23, 42, 0.14)',
+  xl: '0 24px 48px rgba(15, 23, 42, 0.18)',
+};
+
+const FIELD_PADDING: Record<string, string> = {
+  none: '0',
+  sm: '0.5rem',
+  md: '0.75rem',
+  lg: '1rem',
+  xl: '1.25rem',
+};
+
+const getFieldContainerStyle = (field: FormField): React.CSSProperties => {
+  const style = field.style || {};
+  return {
+    backgroundColor: style.backgroundColor,
+    backgroundImage: style.backgroundImage ? `url("${style.backgroundImage}")` : undefined,
+    backgroundSize: style.backgroundImage ? 'cover' : undefined,
+    backgroundPosition: style.backgroundImage ? 'center' : undefined,
+    color: style.textColor,
+    textAlign: style.alignment,
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize ? FIELD_FONT_SIZES[style.fontSize] : undefined,
+    fontWeight: style.fontWeight ? FIELD_FONT_WEIGHTS[style.fontWeight] : undefined,
+    borderRadius: style.borderRadius ? FIELD_RADII[style.borderRadius] : undefined,
+    boxShadow: style.shadow ? FIELD_SHADOWS[style.shadow] : undefined,
+    padding: style.padding ? FIELD_PADDING[style.padding] : undefined,
+    overflow: style.backgroundImage || style.borderRadius ? 'hidden' : undefined,
+  };
+};
+
+const getFieldLabelStyle = (field: FormField): React.CSSProperties => ({
+  color: field.style?.labelColor || field.style?.textColor,
+  textAlign: field.style?.alignment,
+  fontFamily: field.style?.fontFamily,
+  fontSize: field.style?.fontSize ? FIELD_FONT_SIZES[field.style.fontSize] : undefined,
+  fontWeight: field.style?.fontWeight ? FIELD_FONT_WEIGHTS[field.style.fontWeight] : undefined,
+});
+
+const getFieldControlStyle = (field: FormField): React.CSSProperties => ({
+  backgroundColor: field.style?.inputBackgroundColor,
+  color: field.style?.inputTextColor || field.style?.textColor,
+  textAlign: field.style?.alignment,
+  fontFamily: field.style?.fontFamily,
+  fontSize: field.style?.fontSize ? FIELD_FONT_SIZES[field.style.fontSize] : undefined,
+  fontWeight: field.style?.fontWeight ? FIELD_FONT_WEIGHTS[field.style.fontWeight] : undefined,
+  borderRadius: field.style?.borderRadius ? FIELD_RADII[field.style.borderRadius] : undefined,
+});
+
 export const FormRenderer: React.FC<FormRendererProps> = ({
   definition,
   readOnly = false,
@@ -478,7 +556,11 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
           const hasError = !!errors[field.name];
 
           return (
-            <div key={field.id} className={`${widthClass} p-2 flex flex-col space-y-1.5`}>
+            <div
+              key={field.id}
+              className={`${widthClass} p-2 flex flex-col space-y-1.5`}
+              style={getFieldContainerStyle(field)}
+            >
               {/* Field Label */}
               {!['heading', 'paragraph', 'divider', 'image', 'html', 'submit'].includes(
                 field.type
@@ -486,6 +568,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                 <label
                   htmlFor={field.id}
                   className="block text-xs font-bold text-slate-800"
+                  style={getFieldLabelStyle(field)}
                 >
                   {field.label}
                   {isRequired && <span className="text-rose-500 ml-0.5">*</span>}
@@ -505,6 +588,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`${getInputClass()} ${
                     hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                   }`}
+                  style={getFieldControlStyle(field)}
                 />
               )}
 
@@ -521,6 +605,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`${getInputClass()} ${
                     hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                   }`}
+                  style={getFieldControlStyle(field)}
                 />
               )}
 
@@ -537,6 +622,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`${getInputClass()} ${
                     hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                   }`}
+                  style={getFieldControlStyle(field)}
                 />
               )}
 
@@ -555,6 +641,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`${getInputClass()} ${
                     hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                   }`}
+                  style={getFieldControlStyle(field)}
                 />
               )}
 
@@ -571,6 +658,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`${getInputClass()} resize-y ${
                     hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                   }`}
+                  style={getFieldControlStyle(field)}
                 />
               )}
 
@@ -586,6 +674,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                     className={`${getInputClass()} appearance-none pr-8 ${
                       hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                     }`}
+                    style={getFieldControlStyle(field)}
                   >
                     <option value="">{field.placeholder || 'Select an option...'}</option>
                     {field.options?.map((opt) => (
@@ -616,6 +705,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`${getInputClass()} min-h-24 ${
                     hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                   }`}
+                  style={getFieldControlStyle(field)}
                 >
                   {field.options?.map((opt) => (
                     <option key={opt.id} value={opt.value} className="py-1 px-2">
@@ -695,6 +785,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`${getInputClass()} ${
                     hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                   }`}
+                  style={getFieldControlStyle(field)}
                 />
               )}
 
@@ -710,6 +801,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`${getInputClass()} ${
                     hasError ? 'border-rose-400 ring-2 ring-rose-400/20' : ''
                   }`}
+                  style={getFieldControlStyle(field)}
                 />
               )}
 
@@ -719,6 +811,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   className={`p-4 border-2 border-dashed ${
                     hasError ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 bg-slate-50'
                   } ${radiusClass} text-center relative hover:border-blue-400 transition-colors cursor-pointer`}
+                  style={getFieldControlStyle(field)}
                 >
                   <input
                     id={field.id}
@@ -756,19 +849,19 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
               {field.type === 'heading' && (
                 <div className="pt-2 pb-1 border-b border-slate-100">
                   {field.headingLevel === 'h1' ? (
-                    <h1 className="text-xl font-bold text-slate-900">
+                    <h1 className="text-xl font-bold text-slate-900" style={getFieldLabelStyle(field)}>
                       {field.content || field.label}
                     </h1>
                   ) : field.headingLevel === 'h3' ? (
-                    <h3 className="text-sm font-bold text-slate-900">
+                    <h3 className="text-sm font-bold text-slate-900" style={getFieldLabelStyle(field)}>
                       {field.content || field.label}
                     </h3>
                   ) : field.headingLevel === 'h4' ? (
-                    <h4 className="text-xs font-bold text-slate-900">
+                    <h4 className="text-xs font-bold text-slate-900" style={getFieldLabelStyle(field)}>
                       {field.content || field.label}
                     </h4>
                   ) : (
-                    <h2 className="text-base font-bold text-slate-900">
+                    <h2 className="text-base font-bold text-slate-900" style={getFieldLabelStyle(field)}>
                       {field.content || field.label}
                     </h2>
                   )}
@@ -777,7 +870,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
 
               {/* Paragraph */}
               {field.type === 'paragraph' && (
-                <p className="text-xs text-slate-600 leading-relaxed">
+                <p className="text-xs text-slate-600 leading-relaxed" style={getFieldLabelStyle(field)}>
                   {field.content || field.description}
                 </p>
               )}
@@ -787,7 +880,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
 
               {/* Image */}
               {field.type === 'image' && (
-                <div className={`${radiusClass} overflow-hidden border border-slate-200`}>
+                <div className={`${radiusClass} overflow-hidden border border-slate-200`} style={getFieldControlStyle(field)}>
                   <img
                     src={
                       field.imageUrl ||
@@ -803,6 +896,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
               {field.type === 'html' && (
                 <div
                   className="text-xs"
+                  style={getFieldLabelStyle(field)}
                   dangerouslySetInnerHTML={{
                     __html: field.content || '<div class="p-2 bg-slate-100">Custom HTML</div>',
                   }}
@@ -825,7 +919,18 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
                   <button
                     type={field.buttonType || 'submit'}
                     disabled={readOnly || isSubmitting}
-                    {...getButtonStyleProps(field.buttonAlign, field.buttonSize)}
+                    {...(() => {
+                      const buttonProps = getButtonStyleProps(field.buttonAlign, field.buttonSize);
+                      return {
+                        className: buttonProps.className,
+                        style: {
+                          ...buttonProps.style,
+                          ...getFieldControlStyle(field),
+                          backgroundColor: field.style?.inputBackgroundColor || buttonProps.style.backgroundColor,
+                          color: field.style?.inputTextColor || field.style?.textColor || buttonProps.style.color,
+                        },
+                      };
+                    })()}
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>
@@ -842,7 +947,7 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
 
               {/* Field Description */}
               {field.description && !['paragraph', 'heading'].includes(field.type) && (
-                <p className="text-[11px] text-slate-500 mt-0.5">{field.description}</p>
+                <p className="text-[11px] text-slate-500 mt-0.5" style={getFieldLabelStyle(field)}>{field.description}</p>
               )}
 
               {/* Validation Error Message */}

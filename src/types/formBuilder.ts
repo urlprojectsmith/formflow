@@ -42,6 +42,22 @@ export interface FieldValidation {
 
 export type FieldWidth = 'full' | '1/2' | '1/3' | '2/3';
 
+export interface FieldStyle {
+  backgroundColor?: string;
+  backgroundImage?: string;
+  textColor?: string;
+  labelColor?: string;
+  inputBackgroundColor?: string;
+  inputTextColor?: string;
+  alignment?: 'left' | 'center' | 'right';
+  fontFamily?: string;
+  fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
+  borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+}
+
 export interface FormField {
   id: string;
   type: FieldType;
@@ -54,6 +70,7 @@ export interface FormField {
   hidden?: boolean;
   defaultValue?: string | string[];
   width?: FieldWidth;
+  style?: FieldStyle;
 
   validation?: FieldValidation;
   options?: FieldOption[];
@@ -298,4 +315,3 @@ export interface FormVersion {
 export type ViewportMode = 'desktop' | 'tablet' | 'mobile';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
-
