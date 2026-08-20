@@ -74,14 +74,18 @@ export const FormEmbedModal: React.FC<FormEmbedModalProps> = ({
 
   // Generate HTML Embed Code
   const generateEmbedCode = (): string => {
-    const isInline = layoutMode === 'inline';
+    const escapeAttribute = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 
     return `<!-- FormFlow Dynamic Embed Script -->
-<script async src="${embedScriptUrl}"></script>
-
 <div
-  data-formflow-id="${formId}"
-  data-formflow-mode="${layoutMode}"${
+  data-formflow-id="${escapeAttribute(formId)}"
+  data-formflow-mode="${layoutMode}"
+  data-formflow-trigger="${triggerType}"${
     layoutMode !== 'inline' ? `\n  data-formflow-position="${position}"` : ''
   }${
     triggerType === 'scroll'
@@ -103,10 +107,12 @@ export const FormEmbedModal: React.FC<FormEmbedModalProps> = ({
       : ''
   }${
     layoutMode !== 'inline'
-      ? `\n  data-formflow-trigger-text="${triggerText}"\n  data-formflow-trigger-color="${triggerColor}"`
+      ? `\n  data-formflow-trigger-text="${escapeAttribute(triggerText)}"\n  data-formflow-trigger-color="${escapeAttribute(triggerColor)}"`
       : ''
   }
-></div>`;
+></div>
+
+<script async src="${escapeAttribute(embedScriptUrl)}"></script>`;
   };
 
   const handleCopyLink = () => {

@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ user, mobileOpen, onCloseMobil
   const location = useLocation();
   const hasRole = (value: string[]) => user && value.includes(user.role);
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    ...(user?.role !== 'Super Admin' ? [{ name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard }] : []),
     ...(user?.role === 'Super Admin' ? [{ name: 'Super Agency', path: '/super-agency-dashboard', icon: Building2 }] : []),
     ...(user?.role !== 'User' ? [{ name: 'Agency Dashboard', path: '/agency-dashboard', icon: BarChart3 }] : []),
     { name: 'Forms', path: '/forms', icon: FileText },

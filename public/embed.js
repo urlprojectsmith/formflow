@@ -13,6 +13,17 @@
   }
 
   var SCRIPT_ORIGIN = getScriptOrigin();
+  var initQueued = false;
+
+  function queueInitFormFlowEmbeds() {
+    if (initQueued) return;
+    initQueued = true;
+
+    setTimeout(function () {
+      initQueued = false;
+      initFormFlowEmbeds();
+    }, 0);
+  }
 
   // Initialize all uninitialized FormFlow embed containers
   function initFormFlowEmbeds() {
@@ -392,6 +403,30 @@
     document.addEventListener('DOMContentLoaded', initFormFlowEmbeds);
   } else {
     initFormFlowEmbeds();
+  }
+
+  if (window.MutationObserver) {
+    var observer = new MutationObserver(function (mutations) {
+      for (var i = 0; i < mutations.length; i += 1) {
+        for (var j = 0; j < mutations[i].addedNodes.length; j += 1) {
+          var node = mutations[i].addedNodes[j];
+          if (node.nodeType !== 1) continue;
+
+          if (
+            (node.matches && node.matches('[data-formflow-id]:not([data-formflow-initialized])')) ||
+            (node.querySelector && node.querySelector('[data-formflow-id]:not([data-formflow-initialized])'))
+          ) {
+            queueInitFormFlowEmbeds();
+            return;
+          }
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
   }
 
   // Export global initializer if needed
