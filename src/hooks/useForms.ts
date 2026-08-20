@@ -27,7 +27,11 @@ export function useForms() {
   }, [fetchForms]);
 
   const updateStatus = async (id: string, newStatus: FormStatus) => {
-    await apiService.updateFormStatus(id, newStatus);
+    if (newStatus === 'published') {
+      await apiService.publishFormVersion(id);
+    } else {
+      await apiService.updateFormStatus(id, newStatus);
+    }
     await fetchForms();
   };
 

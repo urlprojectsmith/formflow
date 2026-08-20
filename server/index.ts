@@ -785,6 +785,35 @@ class DataStore {
     return this.forms[index];
   }
 
+  updateFormStatus(formId: string, status: FormStatusType, tenantId?: string) {
+    const form = this.getFormById(formId, tenantId);
+    if (!form) return null;
+
+    this.ensureDefinitions(formId);
+    const versions = this.formVersions.get(formId) || [];
+
+    if (status !== 'published') {
+      versions.forEach((version) => {
+        if (version.status === 'published') {
+          version.status = status;
+          version.definition.status = status;
+        }
+      });
+      form.publishedVersion = undefined;
+    }
+
+    const definition = this.formDefinitions.get(formId);
+    if (definition) {
+      definition.status = status;
+      definition.publishedVersion = status === 'published' ? form.publishedVersion : undefined;
+    }
+
+    form.status = status;
+    form.updatedAt = nowISO();
+    this.persist();
+    return form;
+  }
+
   getVersions(formId: string, tenantId?: string) {
     const form = this.getFormById(formId, tenantId);
     if (!form) return [];
@@ -879,9 +908,10 @@ class DataStore {
   }
 
   publish(formId: string, targetVersionNumber?: number, tenantId?: string) {
-    const versions = this.formVersions.get(formId) || [];
     const form = this.getFormById(formId, tenantId);
     if (!form) return null;
+    this.ensureDefinitions(formId);
+    const versions = this.formVersions.get(formId) || [];
     let target = targetVersionNumber
       ? versions.find((v) => v.versionNumber === targetVersionNumber)
       : versions.find((v) => v.status === 'draft') || versions[versions.length - 1];
@@ -946,7 +976,10 @@ class DataStore {
     if (!form) return null;
     this.ensureDefinitions(formId);
     const versions = this.formVersions.get(formId) || [];
-    const active = versions.find((v) => v.status === 'published');
+    let active = versions.find((v) => v.status === 'published');
+    if (!active && form.status === 'published') {
+      active = this.publish(formId, form.publishedVersion, tenantId) || undefined;
+    }
     return active ? JSON.parse(JSON.stringify(active.definition)) : null;
   }
 
@@ -1722,7 +1755,12 @@ app.patch(`${API_PREFIX}/forms/:id/status`, requireAuth, requireRole(['Super Adm
     return;
   }
   const tenantId = req.authUser && req.authUser.role !== 'Super Admin' ? req.authUser.tenantId : undefined;
-  const result = store.updateForm(req.params.id, { status }, tenantId);
+  let result: Form | FormVersion | null = null;
+  if (status === 'published') {
+    result = store.publish(req.params.id, undefined, tenantId);
+  } else {
+    result = store.updateFormStatus(req.params.id, status, tenantId);
+  }
   if (!result) {
     fail(res, 'Form not found', 404);
     return;

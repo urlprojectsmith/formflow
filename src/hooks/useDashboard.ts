@@ -39,7 +39,11 @@ export function useDashboard() {
 
   const toggleFormStatus = async (formId: string, currentStatus: 'published' | 'draft' | 'archived') => {
     const nextStatus = currentStatus === 'published' ? 'draft' : 'published';
-    await apiService.updateFormStatus(formId, nextStatus);
+    if (nextStatus === 'published') {
+      await apiService.publishFormVersion(formId);
+    } else {
+      await apiService.updateFormStatus(formId, nextStatus);
+    }
     await fetchDashboardData();
   };
 
