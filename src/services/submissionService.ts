@@ -447,13 +447,7 @@ export class SubmissionService {
    * Delete submission
    */
   async deleteSubmission(id: string): Promise<boolean> {
-    const all = await apiService.getSubmissions();
-    const idx = all.findIndex((s) => s.id === id);
-    if (idx !== -1) {
-      all.splice(idx, 1);
-      return true;
-    }
-    return false;
+    return apiService.deleteSubmission(id);
   }
 
   /**

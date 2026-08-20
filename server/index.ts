@@ -1028,6 +1028,22 @@ class DataStore {
     return [...scoped.filter((s) => s.formId === formId)];
   }
 
+  deleteSubmission(submissionId: string, tenantId?: string) {
+    const submission = this.submissions.find((item) => item.id === submissionId && (!tenantId || item.tenantId === tenantId));
+    if (!submission) return false;
+
+    this.submissions = this.submissions.filter((item) => item.id !== submissionId);
+
+    const form = this.forms.find((item) => item.id === submission.formId && (!tenantId || item.tenantId === tenantId));
+    if (form) {
+      form.submissionsCount = Math.max(0, form.submissionsCount - 1);
+      form.updatedAt = nowISO();
+    }
+
+    this.persist();
+    return true;
+  }
+
   getIntegrations(tenantId?: string) {
     return this.tenantAware([...this.integrations], tenantId);
   }
@@ -1870,6 +1886,16 @@ app.get(`${API_PREFIX}/submissions`, requireAuth, (req, res) => {
 app.patch(`${API_PREFIX}/submissions/:id/read`, requireAuth, (req, res) => {
   const changed = store.markNotificationRead(req.params.id);
   ok(res, { success: changed });
+});
+
+app.delete(`${API_PREFIX}/submissions/:id`, requireAuth, requireRole(['Super Admin', 'Admin', 'Developer']), (req, res) => {
+  const tenantId = req.authUser && req.authUser.role !== 'Super Admin' ? req.authUser.tenantId : undefined;
+  const deleted = store.deleteSubmission(req.params.id, tenantId);
+  if (!deleted) {
+    fail(res, 'Submission not found', 404);
+    return;
+  }
+  ok(res, { success: true });
 });
 
 app.get(`${API_PREFIX}/public/forms/:id`, (req, res) => {

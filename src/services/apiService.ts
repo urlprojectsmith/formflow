@@ -447,6 +447,11 @@ class FormFlowDataStore {
     return submissions.map((submission) => this.applyCachedActionExecution(submission));
   }
 
+  async deleteSubmission(id: string): Promise<boolean> {
+    const result = await this.request<{ success: true }>(`/submissions/${id}`, { method: 'DELETE' });
+    return result?.success === true;
+  }
+
   async updateSubmissionActionStatus(submissionId: string, actionStatuses: ActionExecutionStatus[]): Promise<FormSubmission> {
     this.actionExecutionStatuses.set(submissionId, actionStatuses);
     this.persistSubmissionActions();
