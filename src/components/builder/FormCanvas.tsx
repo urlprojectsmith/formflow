@@ -119,6 +119,46 @@ const getFieldPreviewStyle = (field: FormField): React.CSSProperties => ({
   borderRadius: field.style?.borderRadius ? FIELD_RADII[field.style.borderRadius] : undefined,
 });
 
+const FORM_SHADOWS: Record<string, string> = {
+  none: 'none',
+  sm: '0 1px 3px rgba(15, 23, 42, 0.08)',
+  md: '0 12px 28px rgba(15, 23, 42, 0.10)',
+  lg: '0 22px 44px rgba(15, 23, 42, 0.14)',
+  xl: '0 32px 64px rgba(15, 23, 42, 0.18)',
+};
+
+const FORM_SABER: Record<string, string> = {
+  none: '',
+  blue: '0 0 0 1px rgba(37, 99, 235, 0.35), 0 0 24px rgba(37, 99, 235, 0.35)',
+  emerald: '0 0 0 1px rgba(5, 150, 105, 0.35), 0 0 24px rgba(5, 150, 105, 0.35)',
+  violet: '0 0 0 1px rgba(124, 58, 237, 0.35), 0 0 24px rgba(124, 58, 237, 0.35)',
+  rose: '0 0 0 1px rgba(225, 29, 72, 0.35), 0 0 24px rgba(225, 29, 72, 0.35)',
+  amber: '0 0 0 1px rgba(217, 119, 6, 0.35), 0 0 24px rgba(217, 119, 6, 0.35)',
+};
+
+const FORM_PADDING: Record<string, string> = {
+  sm: '1rem',
+  md: '1.5rem',
+  lg: '2rem',
+  xl: '2.5rem',
+};
+
+const getFormCanvasStyle = (form: FormDefinition): React.CSSProperties => {
+  const theme = form.theme || {};
+  const shadow = FORM_SHADOWS[theme.formShadow || 'md'];
+  const saber = FORM_SABER[theme.formSaberEffect || 'none'];
+  return {
+    backgroundColor: theme.formBackgroundColor || theme.backgroundColor || undefined,
+    backgroundImage: theme.formBackgroundImage ? `url("${theme.formBackgroundImage}")` : undefined,
+    backgroundSize: theme.formBackgroundImage ? 'cover' : undefined,
+    backgroundPosition: theme.formBackgroundImage ? 'center' : undefined,
+    opacity: theme.formOpacity ?? 1,
+    borderColor: theme.formBorderColor,
+    boxShadow: [shadow, saber].filter(Boolean).join(', '),
+    padding: FORM_PADDING[theme.formPadding || 'lg'],
+  };
+};
+
 interface CanvasFieldCardProps {
   field: FormField;
   index: number;
@@ -412,7 +452,19 @@ export const FormCanvas: React.FC<FormCanvasProps> = ({
         className={`w-full ${viewportWidthClass} transition-all duration-200 ease-in-out my-auto py-2`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="theme-surface-card border-theme rounded-xl shadow-sm p-5 md:p-8 space-y-4">
+        <div
+          className={`theme-surface-card border-theme rounded-xl space-y-4 ${
+            form.theme?.formAnimation === 'float'
+              ? 'animate-[formflow-float_4s_ease-in-out_infinite]'
+              : form.theme?.formAnimation && form.theme.formAnimation !== 'none'
+              ? 'animate-in fade-in duration-500'
+              : ''
+          }`}
+          style={getFormCanvasStyle(form)}
+        >
+          <style>
+            {`@keyframes formflow-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }`}
+          </style>
           {/* Header Preview */}
           <div className="pb-3 border-b border-theme">
             <h2 className="text-xl font-bold theme-text-primary">{form.name || 'Untitled Form'}</h2>

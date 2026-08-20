@@ -142,6 +142,61 @@ const getFieldControlStyle = (field: FormField): React.CSSProperties => ({
   borderRadius: field.style?.borderRadius ? FIELD_RADII[field.style.borderRadius] : undefined,
 });
 
+const FORM_SHADOWS: Record<string, string> = {
+  none: 'none',
+  sm: '0 1px 3px rgba(15, 23, 42, 0.08)',
+  md: '0 12px 28px rgba(15, 23, 42, 0.10)',
+  lg: '0 22px 44px rgba(15, 23, 42, 0.14)',
+  xl: '0 32px 64px rgba(15, 23, 42, 0.18)',
+};
+
+const FORM_SABER: Record<string, string> = {
+  none: '',
+  blue: '0 0 0 1px rgba(37, 99, 235, 0.35), 0 0 24px rgba(37, 99, 235, 0.35)',
+  emerald: '0 0 0 1px rgba(5, 150, 105, 0.35), 0 0 24px rgba(5, 150, 105, 0.35)',
+  violet: '0 0 0 1px rgba(124, 58, 237, 0.35), 0 0 24px rgba(124, 58, 237, 0.35)',
+  rose: '0 0 0 1px rgba(225, 29, 72, 0.35), 0 0 24px rgba(225, 29, 72, 0.35)',
+  amber: '0 0 0 1px rgba(217, 119, 6, 0.35), 0 0 24px rgba(217, 119, 6, 0.35)',
+};
+
+const FORM_PADDING: Record<string, string> = {
+  sm: '1rem',
+  md: '1.5rem',
+  lg: '2rem',
+  xl: '2.5rem',
+};
+
+const getFormContainerStyle = (theme: FormDefinition['theme']): React.CSSProperties => {
+  const shadow = FORM_SHADOWS[theme?.formShadow || 'md'];
+  const saber = FORM_SABER[theme?.formSaberEffect || 'none'];
+  return {
+    backgroundColor: theme?.formBackgroundColor || theme?.backgroundColor || '#ffffff',
+    backgroundImage: theme?.formBackgroundImage ? `url("${theme.formBackgroundImage}")` : undefined,
+    backgroundSize: theme?.formBackgroundImage ? 'cover' : undefined,
+    backgroundPosition: theme?.formBackgroundImage ? 'center' : undefined,
+    opacity: theme?.formOpacity ?? 1,
+    borderColor: theme?.formBorderColor || '#e2e8f0',
+    boxShadow: [shadow, saber].filter(Boolean).join(', '),
+    padding: FORM_PADDING[theme?.formPadding || 'lg'],
+  };
+};
+
+const getFormAnimationClass = (animation?: string) => {
+  switch (animation) {
+    case 'fade':
+      return 'animate-in fade-in duration-500';
+    case 'slide_up':
+      return 'animate-in fade-in slide-in-from-bottom-4 duration-500';
+    case 'scale':
+      return 'animate-in fade-in zoom-in-95 duration-500';
+    case 'float':
+      return 'animate-[formflow-float_4s_ease-in-out_infinite]';
+    case 'none':
+    default:
+      return '';
+  }
+};
+
 export const FormRenderer: React.FC<FormRendererProps> = ({
   definition,
   readOnly = false,
@@ -527,7 +582,14 @@ export const FormRenderer: React.FC<FormRendererProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className={`space-y-4 border rounded-xl ${getFormAnimationClass(safeDefinition.theme?.formAnimation)}`}
+      style={getFormContainerStyle(safeDefinition.theme)}
+    >
+      <style>
+        {`@keyframes formflow-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }`}
+      </style>
       {(submitError || externalError) && (
         <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium rounded-lg flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />

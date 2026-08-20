@@ -113,6 +113,14 @@ export interface FormTheme {
   buttonStyle?: 'solid' | 'outline' | 'soft';
   fontFamily?: string;
   backgroundColor?: string;
+  formBackgroundColor?: string;
+  formOpacity?: number;
+  formBackgroundImage?: string;
+  formAnimation?: 'none' | 'fade' | 'slide_up' | 'scale' | 'float';
+  formShadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  formSaberEffect?: 'none' | 'blue' | 'emerald' | 'violet' | 'rose' | 'amber';
+  formBorderColor?: string;
+  formPadding?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export type ConditionOperator =

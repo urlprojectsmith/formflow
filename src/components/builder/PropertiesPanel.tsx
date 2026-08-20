@@ -1276,6 +1276,119 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 <option value="soft">Soft Tint Background</option>
               </select>
             </div>
+
+            <div className="space-y-3 pt-4 border-t border-slate-200">
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Form Container Style
+              </h4>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Form Background</label>
+                  <input
+                    type="color"
+                    value={form.theme?.formBackgroundColor || form.theme?.backgroundColor || '#ffffff'}
+                    onChange={(e) => onUpdateFormTheme({ formBackgroundColor: e.target.value })}
+                    className="w-full h-9 p-1 bg-slate-50 border border-slate-200 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Border Color</label>
+                  <input
+                    type="color"
+                    value={form.theme?.formBorderColor || '#e2e8f0'}
+                    onChange={(e) => onUpdateFormTheme({ formBorderColor: e.target.value })}
+                    className="w-full h-9 p-1 bg-slate-50 border border-slate-200 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-700">Form Opacity</label>
+                  <span className="text-[10px] font-mono text-slate-500">{Math.round((form.theme?.formOpacity ?? 1) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.2}
+                  max={1}
+                  step={0.05}
+                  value={form.theme?.formOpacity ?? 1}
+                  onChange={(e) => onUpdateFormTheme({ formOpacity: Number(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">Background Image URL</label>
+                <input
+                  type="url"
+                  value={form.theme?.formBackgroundImage || ''}
+                  onChange={(e) => onUpdateFormTheme({ formBackgroundImage: e.target.value })}
+                  placeholder="https://example.com/form-bg.jpg"
+                  className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Shadow</label>
+                  <select
+                    value={form.theme?.formShadow || 'md'}
+                    onChange={(e) => onUpdateFormTheme({ formShadow: e.target.value as any })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="none">None</option>
+                    <option value="sm">Small</option>
+                    <option value="md">Medium</option>
+                    <option value="lg">Large</option>
+                    <option value="xl">Extra Large</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Saber Glow</label>
+                  <select
+                    value={form.theme?.formSaberEffect || 'none'}
+                    onChange={(e) => onUpdateFormTheme({ formSaberEffect: e.target.value as any })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="none">None</option>
+                    <option value="blue">Blue</option>
+                    <option value="emerald">Emerald</option>
+                    <option value="violet">Violet</option>
+                    <option value="rose">Rose</option>
+                    <option value="amber">Amber</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Animation</label>
+                  <select
+                    value={form.theme?.formAnimation || 'none'}
+                    onChange={(e) => onUpdateFormTheme({ formAnimation: e.target.value as any })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="none">None</option>
+                    <option value="fade">Fade In</option>
+                    <option value="slide_up">Slide Up</option>
+                    <option value="scale">Scale In</option>
+                    <option value="float">Floating</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Padding</label>
+                  <select
+                    value={form.theme?.formPadding || 'lg'}
+                    onChange={(e) => onUpdateFormTheme({ formPadding: e.target.value as any })}
+                    className="w-full px-3 py-1.5 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="sm">Small</option>
+                    <option value="md">Medium</option>
+                    <option value="lg">Large</option>
+                    <option value="xl">Extra Large</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
